@@ -11,10 +11,10 @@ import type { ChartSample } from '../types';
 
 interface Props {
   data: ChartSample[];
-  targetLatencyMs: number;
+  targetLatencyMs?: number;
 }
 
-export function LatencyChart({ data, targetLatencyMs }: Props) {
+export function LatencyChart({ data, targetLatencyMs = 300 }: Props) {
   return (
     <div className="w-full h-64 bg-slate-800/60 rounded-xl p-3 border border-slate-700/60 flex flex-col">
       <div className="flex justify-between items-center mb-2 px-1">

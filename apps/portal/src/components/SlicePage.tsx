@@ -34,11 +34,14 @@ export function SlicePage({ device, onLeave }: Props) {
           // Initialize slider to normal (55% of baseline)
           setDemandRate(Math.round(data.slice.baselineKbps * 0.55));
         }
+      } else if (res.status === 404 || res.status === 403) {
+        // Device session expired or gateway restarted - return to join screen cleanly
+        onLeave();
       }
     } catch {
       // ignore
     }
-  }, [device.deviceId, demandRate]);
+  }, [device.deviceId, demandRate, onLeave]);
 
   // Connect WebSocket for live 1-second snapshots & operator override
   useEffect(() => {
@@ -476,7 +479,7 @@ export function SlicePage({ device, onLeave }: Props) {
       {/* Realtime Graphs */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <ThroughputChart data={history} />
-        <LatencyChart data={history} targetLatencyMs={slice.slaTargets.latencyMs} />
+        <LatencyChart data={history} targetLatencyMs={slice?.slaTargets?.latencyMs ?? 300} />
       </div>
     </div>
   );

@@ -7,13 +7,19 @@ interface Props {
 
 export function SlaStatusGrid({ snapshot }: Props) {
   const { stats, slice } = snapshot;
-  const targets = slice.slaTargets;
+  const targets = slice?.slaTargets || {
+    latencyMs: 300,
+    jitterMs: 50,
+    lossPct: 5,
+    minThroughputKbps: 50,
+    availabilityPct: 99.0,
+  };
 
-  const latencyOk = stats.latencyP95Ms === null || stats.latencyP95Ms <= targets.latencyMs;
-  const jitterOk = stats.jitterMs === null || stats.jitterMs <= targets.jitterMs;
-  const lossOk = stats.lossPct <= targets.lossPct;
-  const availOk = stats.availabilityPct === null || stats.availabilityPct >= targets.availabilityPct;
-  const throughputOk = stats.usedKbps >= targets.minThroughputKbps || stats.demandKbps < targets.minThroughputKbps;
+  const latencyOk = stats.latencyP95Ms === null || stats.latencyP95Ms <= (targets.latencyMs ?? 300);
+  const jitterOk = stats.jitterMs === null || stats.jitterMs <= (targets.jitterMs ?? 50);
+  const lossOk = stats.lossPct <= (targets.lossPct ?? 5);
+  const availOk = stats.availabilityPct === null || stats.availabilityPct >= (targets.availabilityPct ?? 99);
+  const throughputOk = stats.usedKbps >= (targets.minThroughputKbps ?? 0) || stats.demandKbps < (targets.minThroughputKbps ?? 0);
 
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">

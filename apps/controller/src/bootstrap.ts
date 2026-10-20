@@ -515,36 +515,50 @@ export async function buildContainer(options: BuildOptions = {}): Promise<AppCon
       scheduler.start();
 
       if (telemetryProvider.name === 'gateway' && (telemetryProvider as any).pushCatalogue) {
-        try {
-          const allSlices = await repositories.slices.listAll();
-          if (allSlices.length > 0) {
-            const cat = allSlices.map((s) => {
-              const jc = s.tags.find((t) => t.startsWith('join:'))?.slice(5) || 'JOIN01';
-              return {
-                code: s.code,
-                name: s.name,
-                department: s.departmentId,
-                sNssai: s.snssai,
-                profile: s.profile,
-                baselineKbps: s.baselineAllocatedMbps,
-                floorKbps: s.minGuaranteedMbps,
-                burstKbps: s.maxBurstMbps,
-                currentLimitKbps: s.baselineAllocatedMbps,
-                slaTargets: {
-                  latencyMs: s.slaTargets.maxLatencyMs,
-                  jitterMs: s.slaTargets.maxJitterMs,
-                  lossPct: s.slaTargets.maxPacketLossPercent,
-                  minThroughputKbps: s.slaTargets.minThroughputMbps,
-                  availabilityPct: s.slaTargets.availabilityPercent,
-                },
-                joinCode: jc,
-              };
-            });
-            await (telemetryProvider as any).pushCatalogue(cat);
+        const syncCatalogue = async (): Promise<boolean> => {
+          try {
+            const allSlices = await repositories.slices.listAll();
+            if (allSlices.length > 0) {
+              const cat = allSlices.map((s) => {
+                const jc = s.tags.find((t) => t.startsWith('join:'))?.slice(5) || s.code.slice(0, 6).toUpperCase();
+                return {
+                  code: s.code,
+                  name: s.name,
+                  department: s.departmentId,
+                  sNssai: s.snssai,
+                  profile: s.profile,
+                  baselineKbps: s.baselineAllocatedMbps,
+                  floorKbps: s.minGuaranteedMbps,
+                  burstKbps: s.maxBurstMbps,
+                  currentLimitKbps: s.baselineAllocatedMbps,
+                  slaTargets: {
+                    latencyMs: s.slaTargets.maxLatencyMs,
+                    jitterMs: s.slaTargets.maxJitterMs,
+                    lossPct: s.slaTargets.maxPacketLossPercent,
+                    minThroughputKbps: s.slaTargets.minThroughputMbps,
+                    availabilityPct: s.slaTargets.availabilityPercent,
+                  },
+                  joinCode: jc,
+                };
+              });
+              await (telemetryProvider as any).pushCatalogue(cat);
+              log.info({ slices: cat.length }, 'gateway catalogue synchronized');
+              return true;
+            }
+            return false;
+          } catch (err: any) {
+            return false;
           }
-        } catch (err: any) {
-          log.warn({ error: err.message }, 'gateway catalogue sync deferred until gateway online');
-        }
+        };
+
+        syncCatalogue().then((ok) => {
+          if (!ok) {
+            const timer = setInterval(async () => {
+              const success = await syncCatalogue();
+              if (success) clearInterval(timer);
+            }, 3000);
+          }
+        });
       }
     },
 
