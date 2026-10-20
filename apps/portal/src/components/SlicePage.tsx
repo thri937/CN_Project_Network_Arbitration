@@ -63,7 +63,9 @@ export function SlicePage({ device, onLeave }: Props) {
           try {
             const msg = JSON.parse(event.data);
             if (msg.type === 'snapshot') {
-              const snap = msg.data as SliceSnapshot;
+              const snap = (msg.snapshot || msg.data) as SliceSnapshot;
+              if (!snap || !snap.stats) return;
+
               setSnapshot(snap);
 
               // Update history for graphs
@@ -72,13 +74,13 @@ export function SlicePage({ device, onLeave }: Props) {
               setHistory((prev) => {
                 const sample: ChartSample = {
                   time: timeStr,
-                  demandKbps: snap.stats.demandKbps,
-                  limitKbps: snap.stats.limitKbps,
-                  usedKbps: snap.stats.usedKbps,
-                  droppedKbps: snap.stats.droppedKbps,
+                  demandKbps: snap.stats.demandKbps ?? 0,
+                  limitKbps: snap.stats.limitKbps ?? 0,
+                  usedKbps: snap.stats.usedKbps ?? 0,
+                  droppedKbps: snap.stats.droppedKbps ?? 0,
                   latencyMs: snap.stats.latencyP95Ms ?? 0,
                   jitterMs: snap.stats.jitterMs ?? 0,
-                  lossPct: snap.stats.lossPct,
+                  lossPct: snap.stats.lossPct ?? 0,
                 };
                 const updated = [...prev, sample];
                 return updated.length > 60 ? updated.slice(updated.length - 60) : updated;

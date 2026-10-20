@@ -6,7 +6,24 @@ interface Props {
 }
 
 export function SlaStatusGrid({ snapshot }: Props) {
-  const { stats, slice } = snapshot;
+  const stats = snapshot?.stats || {
+    code: 'slice',
+    atMs: Date.now(),
+    demandKbps: 0,
+    limitKbps: 140,
+    usedKbps: 0,
+    droppedKbps: 0,
+    queueMs: 0,
+    latencyP50Ms: null,
+    latencyP95Ms: null,
+    jitterMs: null,
+    lossPct: 0,
+    availabilityPct: null,
+    activeDevices: 1,
+    activeSessions: 0,
+    saturated: false,
+  };
+  const slice = snapshot?.slice;
   const targets = slice?.slaTargets || {
     latencyMs: 300,
     jitterMs: 50,

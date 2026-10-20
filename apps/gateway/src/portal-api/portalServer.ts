@@ -163,7 +163,7 @@ export class PortalServer {
         const snapshot = this.getSnapshotForDevice(deviceId);
         if (!snapshot) continue;
 
-        const payload = JSON.stringify({ type: 'snapshot', snapshot });
+        const payload = JSON.stringify({ type: 'snapshot', snapshot, data: snapshot });
         for (const ws of sockets) {
           if (ws.readyState === WebSocket.OPEN) {
             ws.send(payload);
@@ -185,7 +185,7 @@ export class PortalServer {
       // Send initial snapshot immediately
       const initialSnapshot = this.getSnapshotForDevice(deviceId);
       if (initialSnapshot) {
-        ws.send(JSON.stringify({ type: 'snapshot', snapshot: initialSnapshot }));
+        ws.send(JSON.stringify({ type: 'snapshot', snapshot: initialSnapshot, data: initialSnapshot }));
       }
     }
 
