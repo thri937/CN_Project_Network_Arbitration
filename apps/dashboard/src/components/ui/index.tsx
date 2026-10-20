@@ -69,12 +69,12 @@ export function Badge({
   style,
   children,
   dot,
-  pulse,
   className,
 }: {
   style: StatusStyle;
   children: ReactNode;
   dot?: boolean;
+  /** Accepted for compatibility; badges no longer pulse. */
   pulse?: boolean;
   className?: string;
 }) {
@@ -89,19 +89,7 @@ export function Badge({
       )}
     >
       {dot && (
-        <span className="relative flex h-1.5 w-1.5">
-          {pulse && (
-            <span
-              className={cn(
-                'absolute inline-flex h-full w-full rounded-full opacity-60 animate-ping',
-                style.text.replace('text-', 'bg-'),
-              )}
-            />
-          )}
-          <span
-            className={cn('relative inline-flex h-1.5 w-1.5 rounded-full', style.text.replace('text-', 'bg-'))}
-          />
-        </span>
+        <span className={cn('inline-flex h-1.5 w-1.5 rounded-full', style.text.replace('text-', 'bg-'))} />
       )}
       {children}
     </span>
@@ -368,7 +356,7 @@ export function Th({
   return (
     <th
       className={cn(
-        'px-4 py-2.5 text-xs font-medium uppercase tracking-wider text-content-subtle border-b border-edge whitespace-nowrap',
+        'px-4 py-2.5 text-xs font-medium text-content-muted border-b border-edge whitespace-nowrap',
         align === 'right' && 'text-right',
         align === 'center' && 'text-center',
         align === 'left' && 'text-left',
@@ -384,13 +372,16 @@ export function Td({
   children,
   align = 'left',
   className,
+  colSpan,
 }: {
   children: ReactNode;
   align?: 'left' | 'right' | 'center';
   className?: string;
+  colSpan?: number;
 }) {
   return (
     <td
+      colSpan={colSpan}
       className={cn(
         'px-4 py-2.5 border-b border-edge/60 text-content',
         align === 'right' && 'text-right tabular',

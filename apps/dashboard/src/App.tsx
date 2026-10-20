@@ -10,9 +10,8 @@ import type { UserRole } from '@/types/api';
 /**
  * Routing.
  *
- * Every page except the dashboard is lazily loaded. The dashboard is eager because it is
- * the landing route and the one an operator stares at all day; making it wait for a chunk
- * fetch would add a visible delay to the most-used screen for no benefit.
+ * The landing page is the testbed (slices, devices, QR codes, scenarios). Every page is lazily
+ * loaded.
  *
  * Role guards render an explicit "insufficient permission" page rather than redirecting.
  * A silent redirect leaves a manager wondering whether the audit log exists at all; naming
@@ -42,16 +41,6 @@ const DecisionDetailPage = lazy(() =>
   import('@/pages/DecisionDetailPage').then((m) => ({ default: m.DecisionDetailPage })),
 );
 const AuditPage = lazy(() => import('@/pages/AuditPage').then((m) => ({ default: m.AuditPage })));
-const ReportsPage = lazy(() =>
-  import('@/pages/ReportsPage').then((m) => ({ default: m.ReportsPage })),
-);
-const AnalyticsPage = lazy(() =>
-  import('@/pages/AnalyticsPage').then((m) => ({ default: m.AnalyticsPage })),
-);
-const SettingsPage = lazy(() =>
-  import('@/pages/SettingsPage').then((m) => ({ default: m.SettingsPage })),
-);
-const UsersPage = lazy(() => import('@/pages/UsersPage').then((m) => ({ default: m.UsersPage })));
 
 export function App(): JSX.Element {
   const { status } = useAuth();
@@ -95,9 +84,6 @@ export function App(): JSX.Element {
         <Route path="contention" element={<Lazy><ContentionPage /></Lazy>} />
         <Route path="arbitration" element={<Lazy><ArbitrationPage /></Lazy>} />
         <Route path="arbitration/:id" element={<Lazy><DecisionDetailPage /></Lazy>} />
-        <Route path="reports" element={<Lazy><ReportsPage /></Lazy>} />
-        <Route path="analytics" element={<Lazy><AnalyticsPage /></Lazy>} />
-        <Route path="settings" element={<Lazy><SettingsPage /></Lazy>} />
 
         <Route
           path="audit"
@@ -105,16 +91,6 @@ export function App(): JSX.Element {
             <RequireRole minimum="ADMIN">
               <Lazy>
                 <AuditPage />
-              </Lazy>
-            </RequireRole>
-          }
-        />
-        <Route
-          path="users"
-          element={
-            <RequireRole minimum="ADMIN">
-              <Lazy>
-                <UsersPage />
               </Lazy>
             </RequireRole>
           }

@@ -23,24 +23,19 @@ import type {
 /* ------------------------------------------------------------------ */
 
 /**
- * Bandwidth with an automatic unit.
- *
- * Switches to Gbps above 1000 Mbps because a NOC display showing "13410.567 Mbps" wastes
- * horizontal space and reads worse than "13.41 Gbps".
+ * Bandwidth. The testbed's unit is kbps (the API fields keep their `…Mbps` names because the
+ * engine does not care about units: 1 unit = 1 kbps). Always kbps, so 950 and 1,480 are
+ * never shown in two different units side by side.
  */
-export function formatBandwidth(mbps: number | null | undefined, precision?: number): string {
-  if (mbps === null || mbps === undefined || !Number.isFinite(mbps)) return '—';
-
-  if (Math.abs(mbps) >= 1000) {
-    return `${(mbps / 1000).toFixed(precision ?? 2)} Mbps`;
-  }
-  return `${Math.round(mbps)} kbps`;
+export function formatBandwidth(kbps: number | null | undefined, _precision?: number): string {
+  if (kbps === null || kbps === undefined || !Number.isFinite(kbps)) return '—';
+  return `${Math.round(kbps).toLocaleString('en-GB')} kbps`;
 }
 
-/** Bandwidth without a unit suffix, for a table column with the unit in its header. */
-export function formatBandwidthValue(mbps: number | null | undefined): string {
-  if (mbps === null || mbps === undefined || !Number.isFinite(mbps)) return '—';
-  return mbps >= 1000 ? (mbps / 1000).toFixed(2) : Math.round(mbps).toString();
+/** Bandwidth without the unit, for a table column with "kbps" in its header. */
+export function formatBandwidthValue(kbps: number | null | undefined): string {
+  if (kbps === null || kbps === undefined || !Number.isFinite(kbps)) return '—';
+  return Math.round(kbps).toLocaleString('en-GB');
 }
 
 export function formatPercent(value: number | null | undefined, precision = 1): string {
@@ -56,7 +51,7 @@ export function formatRatio(ratio: number | null | undefined, precision = 1): st
 
 export function formatLatency(ms: number | null | undefined): string {
   if (ms === null || ms === undefined || !Number.isFinite(ms)) return '—';
-  return ms < 1 ? `${(ms * 1000).toFixed(0)} µs` : `${ms.toFixed(ms < 10 ? 2 : 1)} ms`;
+  return `${Math.round(ms).toLocaleString('en-GB')} ms`;
 }
 
 export function formatCount(value: number | null | undefined): string {
@@ -66,7 +61,7 @@ export function formatCount(value: number | null | undefined): string {
   );
 }
 
-export function formatCurrency(value: number, symbol = '$'): string {
+export function formatCurrency(value: number, symbol = '£'): string {
   if (!Number.isFinite(value)) return '—';
   const formatted = new Intl.NumberFormat('en', {
     notation: value >= 100_000 ? 'compact' : 'standard',

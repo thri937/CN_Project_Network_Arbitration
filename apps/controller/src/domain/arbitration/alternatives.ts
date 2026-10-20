@@ -266,8 +266,8 @@ function protectStressedStrategy(context: AlternativeContext): AlternativePlan |
         `${excluded.length} slice(s) untouched purely because they are already stressed — which is a ` +
         `network-health argument, not a business one.`
       : `Infeasible: excluding ${excluded.length} stressed slice(s) leaves only ` +
-        `${round(context.requiredReductionMbps - remaining, 1)} Mbps of the ` +
-        `${round(context.requiredReductionMbps, 1)} Mbps required. The stressed slices are holding the ` +
+        `${round(context.requiredReductionMbps - remaining, 1)} kbps of the ` +
+        `${round(context.requiredReductionMbps, 1)} kbps required. The stressed slices are holding the ` +
         `bandwidth, so protecting all of them cannot resolve the contention.`,
   };
 }

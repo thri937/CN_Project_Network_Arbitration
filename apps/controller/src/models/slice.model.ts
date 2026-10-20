@@ -276,7 +276,7 @@ function assertBandwidthOrdering(
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       path: ['minGuaranteedMbps'],
-      message: `Guaranteed minimum (${min} Mbps) cannot exceed the baseline allocation (${base} Mbps)`,
+      message: `Guaranteed minimum (${min} kbps) cannot exceed the baseline allocation (${base} kbps)`,
     });
   }
 
@@ -284,7 +284,7 @@ function assertBandwidthOrdering(
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       path: ['maxBurstMbps'],
-      message: `Burst ceiling (${burst} Mbps) cannot be below the baseline allocation (${base} Mbps)`,
+      message: `Burst ceiling (${burst} kbps) cannot be below the baseline allocation (${base} kbps)`,
     });
   }
 }

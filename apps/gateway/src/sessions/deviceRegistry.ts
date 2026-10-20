@@ -76,7 +76,8 @@ export class DeviceRegistry {
       lastSeenMs: Date.now(),
       activeRateKbps: 0,
       mode: 'local',
-      operatorControlEnabled: false,
+      // Devices follow demand set from the dashboard (scenario buttons, per-slice presets).
+      operatorControlEnabled: true,
     };
 
     this.devices.set(deviceId, record);

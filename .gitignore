@@ -29,5 +29,5 @@ ui-debug.log
 *.tsbuildinfo
 
 # Experiments CSVs
-experiments/*.csv
+**/experiments/*.csv
 !experiments/README.md

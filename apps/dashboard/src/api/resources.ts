@@ -1,4 +1,4 @@
-import { del, get, getPage, patch, post, put } from './client';
+import { del, get, getPage, patch, post, put, http } from './client';
 import type {
   ArbitrationDecision,
   ArbitrationPlan,
@@ -348,20 +348,34 @@ export const reportsApi = {
 };
 
 /* ------------------------------------------------------------------ */
+/** One slice's last 2 s window, exactly as the gateway measured it (null = unknown). */
+export interface GatewaySliceStats {
+  code: string;
+  atMs: number;
+  demandKbps: number;
+  limitKbps: number;
+  usedKbps: number;
+  droppedKbps: number;
+  queueMs: number;
+  latencyP50Ms: number | null;
+  latencyP95Ms: number | null;
+  jitterMs: number | null;
+  lossPct: number;
+  availabilityPct: number | null;
+  activeDevices: number;
+  activeSessions: number;
+  saturated: boolean;
+}
+
 export interface TestbedStatus {
   gatewayOk: boolean;
-  gatewayUptimeS: number;
   capacity: { totalMbps: number; reservedMbps: number; offeredMbps: number } | null;
   lanIps: { interface: string; ip: string; isHotspot: boolean; virtual?: boolean }[];
+  portalPort: number;
   bandwidthUnit: string;
   autoArbitration: boolean;
-  activeExperiment: {
-    id: string;
-    name: string;
-    startedAtMs: number;
-    stoppedAtMs?: number;
-    rowCount: number;
-  } | null;
+  recording: { file: string; startedAtMs: number; rowCount: number; label: string } | null;
+  stats: GatewaySliceStats[];
 }
 
 export interface TestbedDevice {
@@ -379,17 +393,19 @@ export interface TestbedDevice {
 export const testbedApi = {
   status: () => get<TestbedStatus>('/testbed/status'),
   devices: () => get<TestbedDevice[]>('/testbed/devices'),
-  unbindDevice: (id: string) => del<{ unbind: boolean }>(`/testbed/devices/${id}`),
+  unbindDevice: (id: string) => del<{ removed: boolean }>(`/testbed/devices/${encodeURIComponent(id)}`),
   rotateJoinCode: (sliceId: string) =>
     post<{ sliceId: string; code: string; newJoinCode: string }>(`/testbed/slices/${sliceId}/join-code/rotate`),
   setSliceDemand: (sliceId: string, kbps: number, mode?: 'local' | 'internet') =>
     post<{ applied: boolean }>(`/testbed/slices/${sliceId}/demand`, { kbps, mode }),
   runScenario: (name: string) =>
-    post<{ scenario: string; started: boolean; timestamp: number }>(`/testbed/scenarios/${name}/run`),
-  setArbitration: (enabled: boolean) =>
-    put<{ enabled: boolean }>('/testbed/arbitration', { enabled }),
-  startExperiment: (name: string) =>
-    post<{ experimentId: string; name: string }>('/testbed/experiments', { name }),
-  stopExperiment: () =>
-    post<{ stopped: boolean; record: any }>('/testbed/experiments/stop'),
+    post<{ scenario: string; label: string; started: boolean }>(`/testbed/scenarios/${name}/run`),
+  setArbitration: (enabled: boolean) => put<{ enabled: boolean }>('/testbed/arbitration', { enabled }),
+  /** This session's measurements as a CSV file (signed-in download). */
+  downloadRecording: async (): Promise<{ blob: Blob; fileName: string }> => {
+    const response = await http.get('/testbed/recording.csv', { responseType: 'blob' });
+    const disposition = String(response.headers['content-disposition'] ?? '');
+    const fileName = /filename="([^"]+)"/.exec(disposition)?.[1] ?? 'testbed-session.csv';
+    return { blob: response.data as Blob, fileName };
+  },
 };

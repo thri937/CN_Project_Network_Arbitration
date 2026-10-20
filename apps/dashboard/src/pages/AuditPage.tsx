@@ -57,8 +57,8 @@ export function AuditPage(): JSX.Element {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Audit Logs"
-        description="Immutable, append-only record of every consequential action. Nothing on this page can be edited or deleted."
+        title="Audit log"
+        description="Every decision, override and setting change, in order. Entries cannot be edited or deleted."
       />
 
       <div className="flex flex-wrap gap-1.5">

@@ -75,6 +75,22 @@ export class PortalServer {
     this.latestDecisions.set(sliceCode, { decisionId, reason, atMs: Date.now() });
   }
 
+  /** Remove a device: end its load sessions, tell its open pages, and forget it. */
+  public unbindDevice(deviceId: string): boolean {
+    for (const session of [...this.activeSessions.values()]) {
+      if (session.deviceId === deviceId) session.destroy();
+    }
+    const sockets = this.deviceSockets.get(deviceId);
+    if (sockets) {
+      for (const ws of sockets) {
+        if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'unbound' }));
+        ws.close();
+      }
+      this.deviceSockets.delete(deviceId);
+    }
+    return this.deviceRegistry.removeDevice(deviceId);
+  }
+
   public handleOperatorDemand(
     sliceCode: string,
     demandKbps: number,

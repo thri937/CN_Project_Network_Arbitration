@@ -6,7 +6,7 @@ import {
   SliceProfile,
 } from '@/constants/enums';
 import type { CreateDepartmentPayload } from '@/models/department.model';
-import type { CreateSlicePayload } from '@/models/slice.model';
+import type { CreateSlicePayload, Slice } from '@/models/slice.model';
 
 /**
  * THE 7-DEPARTMENT / 7-SLICE TESTBED
@@ -321,4 +321,39 @@ export function gatewayCatalogueItem(departmentName: string, slice: TestbedSlice
     },
     joinCode: slice.joinCode,
   };
+}
+
+/** The join code stored on a slice as a `join:XXXXXX` tag. */
+export function joinCodeOf(slice: Pick<Slice, 'tags' | 'code'>): string {
+  return slice.tags.find((t) => t.startsWith('join:'))?.slice(5) ?? slice.code.slice(0, 6).toUpperCase();
+}
+
+/**
+ * The gateway catalogue for slices as they are stored now. It uses each slice's CURRENT limit,
+ * so re-sending the catalogue (controller restart, join-code rotation) never resets a cut slice
+ * to its baseline behind the controller's back.
+ */
+export function catalogueFromSlices(
+  slices: readonly Slice[],
+  departmentName: (departmentId: string) => string,
+): GatewayCatalogueItem[] {
+  return slices.map((s) => ({
+    code: s.code,
+    name: s.name,
+    department: departmentName(s.departmentId),
+    sNssai: s.snssai,
+    profile: s.profile,
+    baselineKbps: s.baselineAllocatedMbps,
+    floorKbps: s.minGuaranteedMbps,
+    burstKbps: s.maxBurstMbps,
+    currentLimitKbps: s.allocatedMbps,
+    slaTargets: {
+      latencyMs: s.slaTargets.maxLatencyMs,
+      jitterMs: s.slaTargets.maxJitterMs,
+      lossPct: s.slaTargets.maxPacketLossPercent,
+      minThroughputKbps: s.slaTargets.minThroughputMbps,
+      availabilityPct: s.slaTargets.availabilityPercent,
+    },
+    joinCode: joinCodeOf(s),
+  }));
 }

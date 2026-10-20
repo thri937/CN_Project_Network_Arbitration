@@ -59,8 +59,8 @@ export function ContentionPage(): JSX.Element {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Contention Events"
-        description="Raised when total demand exceeds offered capacity for long enough to be real rather than jitter."
+        title="Contention"
+        description="A contention event opens when total demand stays above 102 % of the 950 kbps link for two samples (4 s), and closes after three normal samples."
       />
 
       {/* ---- Detector configuration ---- */}
@@ -68,7 +68,7 @@ export function ContentionPage(): JSX.Element {
         <Card>
           <CardHeader
             title="Detector"
-            subtitle="Debounce parameters, so a momentary spike never triggers a degradation"
+            subtitle="So that a short spike never causes a cut"
           />
           <CardBody className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             <Tooltip content="Demand must exceed capacity by this margin before contention is even suspected. Absorbs measurement jitter around the capacity line.">
@@ -268,7 +268,7 @@ export function ContentionPage(): JSX.Element {
           <EmptyState
             icon={<Icons.check className="h-8 w-8 text-healthy" />}
             title="No contention"
-            description="Total demand is within offered capacity. The detector is running and will raise an event if that changes for long enough to be real."
+            description="Total demand fits the link. Run TC3 on the testbed page to cause one."
           />
         </Card>
       )}

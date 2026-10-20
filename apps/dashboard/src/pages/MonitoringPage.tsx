@@ -1,327 +1,199 @@
-import { useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { telemetryApi } from '@/api/resources';
-import { queryKeys } from '@/lib/queryKeys';
-import { useAuth } from '@/auth/AuthProvider';
-import { useMergedSlices, useRollingSeries } from '@/hooks/useLiveData';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
-  Badge,
-  Button,
-  Card,
-  CardBody,
-  CardHeader,
-  EmptyState,
-  LoadingState,
-  PageHeader,
+  CartesianGrid,
+  Legend,
+  Line,
+  LineChart,
+  ReferenceLine,
+  ResponsiveContainer,
   Tooltip,
-} from '@/components/ui';
-import { MetricChart } from '@/components/charts/LiveChart';
-import { SliceCard } from '@/components/SliceCard';
-import {
-  formatBandwidth,
-  formatLatency,
-  formatPercent,
-  healthStyle,
-  humanise,
-  statusStyles,
-} from '@/lib/format';
-import type { LiveSliceState } from '@/types/api';
+  XAxis,
+  YAxis,
+} from 'recharts';
+import { testbedApi, type GatewaySliceStats } from '@/api/resources';
+import { useSlicesWithDepartments } from '@/hooks/useLiveData';
+import { Card, CardBody, CardHeader, PageHeader } from '@/components/ui';
+import { formatBandwidth, formatLatency, formatPercent, formatTime } from '@/lib/format';
+import { cn } from '@/lib/cn';
 
 /**
- * Runtime monitoring.
+ * Live charts: the gateway's measurements for one slice, over the last few minutes.
  *
- * Per-slice detail: pick a slice, watch its metrics evolve. The charts are fed from the
- * live snapshot rather than the persisted telemetry collection, because storage is
- * throttled — a chart drawn from it would step visibly while the numbers beside it moved
- * smoothly, which reads as a bug.
- *
- * The synthetic-provider controls are here rather than hidden in settings: driving the
- * network into contention is how an operator rehearses a runbook or demonstrates the
- * platform, and it belongs beside the display it affects.
+ * The history is kept in this page (one point per 2 s gateway window, about 6 minutes), so it
+ * starts empty when the page opens. Gaps in latency mean no probe was answered in that window.
  */
+
+const MAX_POINTS = 180;
+const ORDER = [
+  'patient-telemetry',
+  'factory-automation',
+  'lab-instrumentation',
+  'warehouse-operations',
+  'cctv',
+  'office-wi-fi',
+  'canteen-signage',
+];
+
+interface Point {
+  t: number;
+  demand: number;
+  limit: number;
+  carried: number;
+  latency: number | null;
+  loss: number;
+}
+
+const AXIS = { stroke: 'rgb(var(--content-subtle))', fontSize: 11, tickLine: false, axisLine: false };
+const GRID = { stroke: 'rgb(var(--edge))', strokeDasharray: '3 3' };
+const TOOLTIP = {
+  contentStyle: {
+    backgroundColor: 'rgb(var(--surface-raised))',
+    border: '1px solid rgb(var(--edge-strong))',
+    borderRadius: 6,
+    fontSize: 12,
+  },
+};
+
 export function MonitoringPage(): JSX.Element {
-  const { isManager } = useAuth();
-  const queryClient = useQueryClient();
-  const { merged, snapshot, isLoading } = useMergedSlices();
+  const status = useQuery({ queryKey: ['testbed', 'status'], queryFn: testbedApi.status, refetchInterval: 2000 });
+  const { slices, departmentById } = useSlicesWithDepartments();
+  const rows = useMemo(() => [...slices].sort((a, b) => ORDER.indexOf(a.code) - ORDER.indexOf(b.code)), [slices]);
+  const [code, setCode] = useState('canteen-signage');
 
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  // History per slice, appended once per new gateway window.
+  const history = useRef(new Map<string, Point[]>());
+  const lastAt = useRef(0);
+  const [, setVersion] = useState(0);
+  useEffect(() => {
+    const stats = status.data?.stats ?? [];
+    const at = Math.max(0, ...stats.map((s) => s.atMs));
+    if (!stats.length || at <= lastAt.current) return;
+    lastAt.current = at;
+    for (const s of stats) {
+      const list = history.current.get(s.code) ?? [];
+      list.push(toPoint(s));
+      if (list.length > MAX_POINTS) list.splice(0, list.length - MAX_POINTS);
+      history.current.set(s.code, list);
+    }
+    setVersion((v) => v + 1);
+  }, [status.data]);
 
-  const { data: provider } = useQuery({
-    queryKey: queryKeys.telemetry.provider(),
-    queryFn: telemetryApi.provider,
-    refetchInterval: 10_000,
-  });
-
-  const selected = merged.find((entry) => entry.slice.id === selectedId) ?? merged[0] ?? null;
-  const live = selected?.live ?? null;
-
-  /* Rolling per-slice series, keyed off the observation timestamp so a repeated snapshot
-     does not append a duplicate point. */
-  const throughput = useRollingSeries<LiveSliceState>(
-    live,
-    (state) => ({ demand: state.demandMbps, used: state.usedMbps, allocated: state.allocatedMbps }),
-    { maxPoints: 120, timestamp: (state) => state.observedAtMs },
-  );
-
-  const quality = useRollingSeries<LiveSliceState>(
-    live,
-    (state) => ({ latency: state.latencyMs, jitter: state.jitterMs }),
-    { maxPoints: 120, timestamp: (state) => state.observedAtMs },
-  );
-
-  const lossSeries = useRollingSeries<LiveSliceState>(
-    live,
-    (state) => ({ loss: state.packetLossPercent }),
-    { maxPoints: 120, timestamp: (state) => state.observedAtMs },
-  );
-
-  const compute = useRollingSeries<LiveSliceState>(
-    live,
-    (state) => ({ cpu: state.cpuPercent, memory: state.memoryPercent }),
-    { maxPoints: 120, timestamp: (state) => state.observedAtMs },
-  );
-
-  const setLoad = useMutation({
-    mutationFn: (multiplier: number) => telemetryApi.setLoad(multiplier),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: queryKeys.telemetry.provider() });
-    },
-  });
-
-  const injectFault = useMutation({
-    mutationFn: ({ sliceId, kind }: { sliceId: string; kind: string }) =>
-      telemetryApi.injectFault(sliceId, kind, 40),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: queryKeys.telemetry.provider() });
-    },
-  });
-
-  if (isLoading) return <LoadingState label="Loading telemetry" />;
-
-  const synthetic = provider?.simulation;
+  const slice = rows.find((r) => r.code === code);
+  const series = history.current.get(code) ?? [];
+  const latest = series[series.length - 1];
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Runtime Monitoring"
-        description={
-          provider
-            ? `Provider: ${provider.name} · ${snapshot?.slices.length ?? 0} slices sampled`
-            : undefined
-        }
-        action={
-          provider && (
-            <Badge
-              style={
-                provider.health.status === 'up'
-                  ? statusStyles.healthy
-                  : provider.health.status === 'down'
-                    ? statusStyles.critical
-                    : statusStyles.warning
-              }
-              dot
-              pulse={provider.health.status !== 'up'}
-            >
-              Telemetry {provider.health.status}
-            </Badge>
-          )
-        }
+        title="Live charts"
+        description="What the gateway measured for one slice, every 2 seconds, since this page was opened."
       />
 
-      {/* ---- Simulation controls ---- */}
-      {isManager && synthetic && (
-        <Card>
-          <CardHeader
-            title="Network simulation"
-            subtitle="Drive the modelled network into contention. Decisions taken as a result are real and audited."
+      <div className="flex flex-wrap gap-2">
+        {rows.map((r) => (
+          <button
+            key={r.code}
+            onClick={() => setCode(r.code)}
+            className={cn(
+              'rounded-md border px-3 py-1.5 text-sm',
+              r.code === code ? 'border-brand bg-brand/10 text-content' : 'border-edge text-content-muted hover:text-content',
+            )}
+          >
+            {departmentById.get(r.departmentId)?.name ?? r.name}
+          </button>
+        ))}
+      </div>
+
+      {slice && (
+        <div className="grid gap-4 sm:grid-cols-4">
+          <Figure label="Demand" value={formatBandwidth(latest?.demand ?? null)} />
+          <Figure label="Limit" value={formatBandwidth(latest?.limit ?? slice.allocatedMbps)} note={`baseline ${formatBandwidth(slice.baselineAllocatedMbps)}`} />
+          <Figure label="Carried" value={formatBandwidth(latest?.carried ?? null)} />
+          <Figure
+            label="Latency p95 / loss"
+            value={`${formatLatency(latest?.latency ?? null)} / ${latest ? formatPercent(latest.loss, 1) : '—'}`}
+            note={`targets ${formatLatency(slice.slaTargets.maxLatencyMs)} / ${formatPercent(slice.slaTargets.maxPacketLossPercent, 1)}`}
           />
-          <CardBody className="flex flex-wrap items-center gap-4">
-            <div className="flex items-center gap-2">
-              <span className="label">Global load</span>
-              <div className="flex gap-1">
-                {[0.5, 1, 2, 4, 6].map((multiplier) => (
-                  <button
-                    key={multiplier}
-                    onClick={() => setLoad.mutate(multiplier)}
-                    disabled={setLoad.isPending}
-                    className={
-                      Math.abs(synthetic.globalLoadMultiplier - multiplier) < 0.01
-                        ? 'rounded-md bg-brand px-2.5 py-1 text-xs font-medium text-white'
-                        : 'rounded-md border border-edge-strong px-2.5 py-1 text-xs text-content-muted transition-colors hover:bg-surface-sunken hover:text-content'
-                    }
-                  >
-                    {multiplier}×
-                  </button>
-                ))}
-              </div>
-            </div>
+        </div>
+      )}
 
-            {selected && (
-              <div className="flex items-center gap-2">
-                <span className="label">Inject fault into {selected.slice.name}</span>
-                <div className="flex gap-1">
-                  {(['DEMAND_SURGE', 'LINK_DEGRADATION', 'COMPUTE_SATURATION'] as const).map(
-                    (kind) => (
-                      <Button
-                        key={kind}
-                        size="sm"
-                        loading={injectFault.isPending}
-                        onClick={() => injectFault.mutate({ sliceId: selected.slice.id, kind })}
-                      >
-                        {humanise(kind)}
-                      </Button>
-                    ),
-                  )}
-                </div>
-              </div>
-            )}
+      <Card>
+        <CardHeader title="Throughput" subtitle="Demand is what the devices ask for; the limit is what the slice may send; carried is what got through." />
+        <CardBody>
+          <Chart data={series}>
+            <YAxis {...AXIS} width={70} tickFormatter={(v: number) => formatBandwidth(v)} />
+            <Tooltip {...TOOLTIP} labelFormatter={(t) => formatTime(Number(t))} formatter={(v: number) => formatBandwidth(v)} />
+            <Legend wrapperStyle={{ fontSize: 12 }} />
+            <Line type="stepAfter" dataKey="demand" name="Demand" stroke="rgb(var(--warning))" dot={false} isAnimationActive={false} />
+            <Line type="stepAfter" dataKey="limit" name="Limit" stroke="rgb(var(--content-muted))" strokeDasharray="4 3" dot={false} isAnimationActive={false} />
+            <Line type="monotone" dataKey="carried" name="Carried" stroke="rgb(var(--brand))" strokeWidth={2} dot={false} isAnimationActive={false} />
+          </Chart>
+        </CardBody>
+      </Card>
 
-            {synthetic.activeFaults.length > 0 && (
-              <Badge style={statusStyles.warning} dot pulse>
-                {synthetic.activeFaults.length} active fault(s)
-              </Badge>
-            )}
+      <div className="grid gap-6 xl:grid-cols-2">
+        <Card>
+          <CardHeader title="Latency (p95 of probe round trips)" subtitle={slice ? `Target ${formatLatency(slice.slaTargets.maxLatencyMs)}` : undefined} />
+          <CardBody>
+            <Chart data={series}>
+              <YAxis {...AXIS} width={60} tickFormatter={(v: number) => `${v} ms`} />
+              <Tooltip {...TOOLTIP} labelFormatter={(t) => formatTime(Number(t))} formatter={(v: number) => formatLatency(v)} />
+              {slice && <ReferenceLine y={slice.slaTargets.maxLatencyMs} stroke="rgb(var(--critical))" strokeDasharray="4 3" />}
+              <Line type="monotone" dataKey="latency" name="Latency p95" stroke="rgb(var(--brand))" dot={false} connectNulls={false} isAnimationActive={false} />
+            </Chart>
           </CardBody>
         </Card>
-      )}
-
-      {merged.length === 0 ? (
         <Card>
-          <EmptyState title="No slices to monitor" description="Create a slice to begin." />
+          <CardHeader title="Loss" subtitle={slice ? `Target ${formatPercent(slice.slaTargets.maxPacketLossPercent, 1)}` : undefined} />
+          <CardBody>
+            <Chart data={series}>
+              <YAxis {...AXIS} width={50} tickFormatter={(v: number) => `${v} %`} />
+              <Tooltip {...TOOLTIP} labelFormatter={(t) => formatTime(Number(t))} formatter={(v: number) => formatPercent(v, 1)} />
+              {slice && <ReferenceLine y={slice.slaTargets.maxPacketLossPercent} stroke="rgb(var(--critical))" strokeDasharray="4 3" />}
+              <Line type="monotone" dataKey="loss" name="Loss" stroke="rgb(var(--degraded))" dot={false} isAnimationActive={false} />
+            </Chart>
+          </CardBody>
         </Card>
-      ) : (
-        <>
-          {/* ---- Slice selector ---- */}
-          <div className="flex flex-wrap gap-2">
-            {merged.map((entry) => {
-              const health = entry.live?.health ?? entry.slice.health;
-              const active = entry.slice.id === selected?.slice.id;
-              return (
-                <button
-                  key={entry.slice.id}
-                  onClick={() => setSelectedId(entry.slice.id)}
-                  className={
-                    active
-                      ? 'rounded-lg border border-brand bg-brand/10 px-3 py-1.5 text-xs font-medium text-brand'
-                      : 'rounded-lg border border-edge px-3 py-1.5 text-xs text-content-muted transition-colors hover:border-edge-strong hover:text-content'
-                  }
-                >
-                  <span className="flex items-center gap-1.5">
-                    <span
-                      className={`h-1.5 w-1.5 rounded-full ${healthStyle(health).text.replace('text-', 'bg-')}`}
-                    />
-                    {entry.slice.name}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
+      </div>
+    </div>
+  );
+}
 
-          {selected && (
-            <>
-              <div className="grid gap-6 lg:grid-cols-3">
-                <div className="lg:col-span-1">
-                  <SliceCard entry={selected} />
-                </div>
+function toPoint(s: GatewaySliceStats): Point {
+  return {
+    t: s.atMs,
+    demand: s.demandKbps,
+    limit: s.limitKbps,
+    carried: s.usedKbps,
+    latency: s.latencyP95Ms,
+    loss: s.lossPct,
+  };
+}
 
-                <Card className="lg:col-span-2">
-                  <CardHeader
-                    title="Throughput"
-                    subtitle="Demand is independent of allocation — the gap between them is the contention signal"
-                  />
-                  <CardBody className="pt-2">
-                    {throughput.length < 2 ? (
-                      <div className="grid h-[180px] place-items-center text-xs text-content-muted">
-                        Collecting samples…
-                      </div>
-                    ) : (
-                      <MetricChart
-                        data={throughput}
-                        height={180}
-                        yFormatter={(value) => formatBandwidth(value, 0)}
-                        series={[
-                          { key: 'demand', colour: 'rgb(var(--critical))' },
-                          { key: 'allocated', colour: 'rgb(var(--warning))' },
-                          { key: 'used', colour: 'rgb(var(--brand))' },
-                        ]}
-                      />
-                    )}
-                  </CardBody>
-                </Card>
-              </div>
+function Figure({ label, value, note }: { label: string; value: string; note?: string }) {
+  return (
+    <div className="rounded-lg border border-edge bg-surface-raised p-4">
+      <div className="text-xs text-content-muted">{label}</div>
+      <div className="mt-1 text-lg font-semibold text-content">{value}</div>
+      {note && <div className="mt-0.5 text-xs text-content-subtle">{note}</div>}
+    </div>
+  );
+}
 
-              <div className="grid gap-6 lg:grid-cols-3">
-                <Card>
-                  <CardHeader
-                    title="Latency & jitter"
-                    subtitle={`SLA: ≤ ${formatLatency(selected.slice.slaTargets.maxLatencyMs)} / ${formatLatency(selected.slice.slaTargets.maxJitterMs)}`}
-                  />
-                  <CardBody className="pt-2">
-                    <MetricChart
-                      data={quality}
-                      height={150}
-                      yFormatter={(value) => `${value.toFixed(1)}ms`}
-                      series={[
-                        { key: 'latency', colour: 'rgb(var(--degraded))' },
-                        { key: 'jitter', colour: 'rgb(var(--info))' },
-                      ]}
-                    />
-                  </CardBody>
-                </Card>
-
-                <Card>
-                  <CardHeader
-                    title="Packet loss"
-                    subtitle={`SLA: ≤ ${formatPercent(selected.slice.slaTargets.maxPacketLossPercent, 2)}`}
-                  />
-                  <CardBody className="pt-2">
-                    <MetricChart
-                      data={lossSeries}
-                      height={150}
-                      yFormatter={(value) => `${value.toFixed(2)}%`}
-                      series={[{ key: 'loss', colour: 'rgb(var(--critical))' }]}
-                    />
-                  </CardBody>
-                </Card>
-
-                <Card>
-                  <CardHeader title="Compute" subtitle="User-plane function utilisation" />
-                  <CardBody className="pt-2">
-                    <MetricChart
-                      data={compute}
-                      height={150}
-                      yFormatter={(value) => `${value.toFixed(0)}%`}
-                      series={[
-                        { key: 'cpu', colour: 'rgb(var(--brand))' },
-                        { key: 'memory', colour: 'rgb(var(--healthy))' },
-                      ]}
-                    />
-                  </CardBody>
-                </Card>
-              </div>
-
-              {/* ---- SLA breaches ---- */}
-              {live && live.breaches.length > 0 && (
-                <Card>
-                  <CardHeader title="Active SLA breaches" />
-                  <CardBody className="flex flex-wrap gap-2">
-                    {live.breaches.map((breach) => (
-                      <Tooltip
-                        key={breach}
-                        content={`This dimension is currently outside the contractual target. SLA scoring takes the WORST dimension, not an average, so a single breach determines the slice's health.`}
-                      >
-                        <Badge style={statusStyles.critical} dot>
-                          {humanise(breach)}
-                        </Badge>
-                      </Tooltip>
-                    ))}
-                  </CardBody>
-                </Card>
-              )}
-            </>
-          )}
-        </>
-      )}
+function Chart({ data, children }: { data: Point[]; children: React.ReactNode }) {
+  if (data.length < 2) {
+    return <div className="grid h-56 place-items-center text-sm text-content-muted">Collecting measurements…</div>;
+  }
+  return (
+    <div className="h-56">
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart data={data} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
+          <CartesianGrid {...GRID} vertical={false} />
+          <XAxis dataKey="t" {...AXIS} tickFormatter={(t: number) => formatTime(t)} minTickGap={40} />
+          {children}
+        </LineChart>
+      </ResponsiveContainer>
     </div>
   );
 }

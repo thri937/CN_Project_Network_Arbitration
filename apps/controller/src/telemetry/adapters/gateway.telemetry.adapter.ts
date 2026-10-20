@@ -116,6 +116,12 @@ export class GatewayTelemetryAdapter implements INetworkTelemetryPort, SlaAwareP
     });
   }
 
+  /** Gateway uptime in seconds; it drops back to ~0 when the gateway restarts. */
+  public async uptimeSeconds(): Promise<number> {
+    const res = await this.requestJson<{ ok: boolean; uptimeS?: number }>('GET', '/v1/health');
+    return Number(res.uptimeS ?? 0);
+  }
+
   public async ping(): Promise<void> {
     const res = await this.requestJson<{ ok: boolean }>('GET', '/v1/health');
     if (!res.ok) {
@@ -141,6 +147,29 @@ export class GatewayTelemetryAdapter implements INetworkTelemetryPort, SlaAwareP
   public async pushCatalogue(slices: any[]): Promise<void> {
     await this.requestJson('PUT', '/v1/slices', slices);
     log.info({ count: slices.length }, 'pushed slice catalogue to gateway');
+  }
+
+  /** Devices that have joined a slice and were seen in the last 15 s. */
+  public async listDevices(): Promise<unknown[]> {
+    return this.requestJson<unknown[]>('GET', '/v1/devices');
+  }
+
+  /** Remove a device from its slice and end its traffic. */
+  public async unbindDevice(deviceId: string): Promise<boolean> {
+    try {
+      await this.requestJson('DELETE', `/v1/devices/${encodeURIComponent(deviceId)}`);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /** Operator remote control: the slice's devices switch to this demand. */
+  public async setDemand(sliceCode: string, kbps: number, mode?: 'local' | 'internet'): Promise<void> {
+    await this.requestJson('POST', `/v1/slices/${encodeURIComponent(sliceCode)}/demand`, {
+      kbps,
+      ...(mode ? { mode } : {}),
+    });
   }
 
   /** The gateway's last completed measurement window, exactly as measured (nulls = unknown). */

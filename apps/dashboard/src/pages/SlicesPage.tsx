@@ -79,8 +79,8 @@ export function SlicesPage(): JSX.Element {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Network Slices"
-        description="Slices are the unit of arbitration. Their business context comes from the department that owns them."
+        title="Slice contracts"
+        description="Each department has one slice: its baseline (the normal limit), its contractual floor and its SLA targets. Values are in kbps on the 1 Mbps link."
       />
 
       {/* ---- Admission control ---- */}
@@ -88,7 +88,7 @@ export function SlicesPage(): JSX.Element {
         <Card>
           <CardHeader
             title="Admission control"
-            subtitle="Guaranteed floors must fit inside capacity, or arbitration has no feasible solution"
+            subtitle="The floors must fit inside the link, or no plan could ever be feasible"
           />
           <CardBody className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             <Metric label="Offered capacity" value={formatBandwidth(headroom.offeredCapacityMbps)} />

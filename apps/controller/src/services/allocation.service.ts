@@ -139,7 +139,7 @@ export class AllocationService {
           actor: context.actor,
           summary:
             `Arbitration ${record.id}: ${plan.verdict}, freed ` +
-            `${round(plan.achievedReductionMbps, 1)} Mbps across ${degradedAllocations.length} slice(s)`,
+            `${round(plan.achievedReductionMbps, 1)} kbps across ${degradedAllocations.length} slice(s)`,
           target: { type: 'ArbitrationDecision', id: record.id },
           metadata: {
             contentionId: context.contentionEvent.id,
@@ -283,7 +283,7 @@ export class AllocationService {
           action: AuditAction.ALLOCATION_ROLLED_BACK,
           actor,
           summary:
-            `Slice ${previous.name} reconciled to ${failure.effectiveMbps || previous.allocatedMbps} Mbps: ` +
+            `Slice ${previous.name} reconciled to ${failure.effectiveMbps || previous.allocatedMbps} kbps: ` +
             `the network refused the change (${failure.error ?? 'unknown error'})`,
           target: { type: 'Slice', id: failure.sliceId, name: previous.name },
           metadata: { decisionId, error: failure.error },

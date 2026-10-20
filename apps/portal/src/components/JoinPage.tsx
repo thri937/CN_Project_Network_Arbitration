@@ -1,232 +1,148 @@
-import { useState, useEffect } from 'react';
-import type { SliceCatalogueItem, BoundDevice } from '../types';
-import { formatKbps } from '../utils/format';
+import { useEffect, useState } from 'react';
+import type { BoundDevice, SliceCatalogueItem } from '../types';
+import { formatKbps, profileLabel } from '../utils/format';
 
 interface Props {
-  onJoined: (device: BoundDevice) => void;
+  onJoined: (device: BoundDevice, joinCode: string) => void;
 }
 
 export function JoinPage({ onJoined }: Props) {
   const [slices, setSlices] = useState<SliceCatalogueItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [code, setCode] = useState('');
-  const [nickname, setNickname] = useState(() => localStorage.getItem('cn_device_nickname') || 'My Phone');
-  const [submitting, setSubmitting] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [code, setCode] = useState(() => (new URLSearchParams(window.location.search).get('code') ?? '').trim().toUpperCase());
+  const [nickname, setNickname] = useState(() => localStorage.getItem('cn_device_nickname') || '');
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Check URL search params for ?code=
-    const params = new URLSearchParams(window.location.search);
-    const codeParam = params.get('code');
-    if (codeParam) {
-      setCode(codeParam.trim().toUpperCase());
-    }
-
     fetch('/portal-api/slices')
-      .then((res) => {
-        if (!res.ok) throw new Error('Failed to fetch slice catalogue');
-        return res.json();
-      })
-      .then((data: SliceCatalogueItem[]) => {
-        setSlices(data);
-        setLoading(false);
-      })
-      .catch((err) => {
-        setError(err.message);
-        setLoading(false);
-      });
+      .then((res) => (res.ok ? res.json() : Promise.reject(new Error(`gateway answered ${res.status}`))))
+      .then((data: SliceCatalogueItem[]) =>
+        // CLN101 … CAN701: the digits follow the department order (most critical first).
+        setSlices([...data].sort((a, b) => a.joinCode.replace(/\D/g, '').localeCompare(b.joinCode.replace(/\D/g, '')))),
+      )
+      .catch((err: Error) => setLoadError(err.message));
   }, []);
 
-  const selectedSlice = slices.find(
-    (s) => s.joinCode?.toUpperCase() === code.trim().toUpperCase()
-  );
+  const match = slices.find((s) => s.joinCode?.toUpperCase() === code.trim().toUpperCase());
 
-  const handleJoin = async (e: React.FormEvent) => {
+  const join = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!code.trim()) {
-      setError('Please enter a 6-character slice join code');
+      setError('Enter your department’s join code.');
       return;
     }
-
-    setSubmitting(true);
+    setBusy(true);
     setError(null);
-
     try {
       const res = await fetch('/portal-api/join', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          code: code.trim().toUpperCase(),
-          nickname: nickname.trim() || 'Client Device',
-        }),
+        body: JSON.stringify({ code: code.trim().toUpperCase(), nickname: nickname.trim() || 'Phone' }),
       });
-
       const body = await res.json();
-      if (!res.ok) {
-        throw new Error(body.error || 'Failed to join slice');
-      }
-
+      if (!res.ok) throw new Error(body.error || 'Could not join');
       localStorage.setItem('cn_device_nickname', nickname.trim());
-      const bound: BoundDevice = {
+      onJoined({
         deviceId: body.deviceId,
-        sliceCode: body.slice?.code || code.trim(),
-        nickname: nickname.trim() || 'Client Device',
-        sourceIp: '127.0.0.1',
+        sliceCode: body.slice?.code ?? '',
+        nickname: nickname.trim() || 'Phone',
+        sourceIp: '',
         lastSeenMs: Date.now(),
         activeRateKbps: 0,
         mode: 'local',
         operatorControlEnabled: true,
-      };
-      onJoined(bound);
-    } catch (err: any) {
-      setError(err.message);
+      }, code.trim().toUpperCase());
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not join');
     } finally {
-      setSubmitting(false);
+      setBusy(false);
     }
   };
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-8">
-      {/* Header */}
-      <div className="text-center mb-8">
-        <div className="inline-flex items-center gap-2 px-3 py-1 bg-blue-950/70 border border-blue-800/60 rounded-full text-blue-400 text-xs font-medium mb-3">
-          <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
-          Real-Network Slice Gateway
-        </div>
-        <h1 className="text-3xl font-extrabold text-slate-100 tracking-tight">
-          Join a Network Slice
-        </h1>
-        <p className="text-slate-400 text-sm mt-2">
-          Connect your device to a dedicated 5G QoS network slice with enforced token-bucket shaping.
-        </p>
-      </div>
+    <div className="mx-auto max-w-md px-5 py-8">
+      <h1 className="text-xl font-semibold">Join your department’s slice</h1>
+      <p className="mt-1 text-sm text-gray-600">
+        This device becomes one department on the testbed’s shared 1 Mbps link. You choose how much traffic to send on the
+        next screen.
+      </p>
 
-      {error && (
-        <div className="mb-6 p-4 bg-red-950/60 border border-red-800/80 rounded-xl text-red-200 text-sm flex items-center gap-3">
-          <span className="text-xl">⚠️</span>
-          <span>{error}</span>
-        </div>
+      {loadError && (
+        <p className="mt-4 rounded border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800">
+          Cannot reach the gateway ({loadError}). Check this phone is on the laptop’s hotspot.
+        </p>
       )}
 
-      {/* Join Form */}
-      <form onSubmit={handleJoin} className="bg-slate-800/70 border border-slate-700/70 rounded-2xl p-6 shadow-xl space-y-5">
-        <div>
-          <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-2">
-            Device Nickname
-          </label>
+      <form onSubmit={join} className="mt-6 space-y-4">
+        <label className="block text-sm">
+          <span className="text-gray-700">Join code</span>
           <input
-            type="text"
-            value={nickname}
-            onChange={(e) => setNickname(e.target.value)}
-            placeholder="e.g. Clinic Tablet, Canteen Kiosk"
-            className="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-4 py-3 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-            required
+            value={code}
+            onChange={(e) => setCode(e.target.value.toUpperCase())}
+            maxLength={6}
+            autoCapitalize="characters"
+            autoComplete="off"
+            placeholder="e.g. CLN101"
+            className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 font-mono text-base tracking-wider focus:border-blue-600 focus:outline-none"
           />
-        </div>
+        </label>
 
-        <div>
-          <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-2">
-            Slice Join Code (6 characters)
-          </label>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              maxLength={6}
-              value={code}
-              onChange={(e) => setCode(e.target.value.toUpperCase())}
-              placeholder="e.g. CLN101"
-              className="flex-1 bg-slate-900/90 border border-slate-700 rounded-xl px-4 py-3 font-mono text-lg uppercase tracking-wider text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-              required
-            />
-          </div>
-        </div>
-
-        {/* Selected Slice Preview */}
-        {selectedSlice && (
-          <div className="p-4 bg-slate-900/80 border border-blue-900/50 rounded-xl space-y-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <span className="text-xs text-blue-400 font-semibold uppercase tracking-wider">
-                  {selectedSlice.department}
-                </span>
-                <h3 className="text-base font-bold text-slate-100 mt-0.5">
-                  {selectedSlice.name}
-                </h3>
-              </div>
-              <span className="px-2.5 py-1 bg-blue-950 border border-blue-800 text-blue-300 text-xs font-semibold rounded-lg">
-                {selectedSlice.profile}
-              </span>
+        {match && (
+          <div className="rounded border border-gray-200 bg-gray-50 px-3 py-2 text-sm">
+            <div className="font-medium">
+              {match.department}: {match.name}
             </div>
-
-            <div className="grid grid-cols-3 gap-2 text-xs pt-2 border-t border-slate-800">
-              <div>
-                <span className="text-slate-500 block">Baseline Limit</span>
-                <span className="font-semibold text-slate-200">{formatKbps(selectedSlice.baselineKbps)}</span>
-              </div>
-              <div>
-                <span className="text-slate-500 block">Floor Limit</span>
-                <span className="font-semibold text-slate-200">{formatKbps(selectedSlice.floorKbps)}</span>
-              </div>
-              <div>
-                <span className="text-slate-500 block">Target Latency</span>
-                <span className="font-semibold text-slate-200">&lt; {selectedSlice.slaTargets?.latencyMs ?? 300} ms</span>
-              </div>
+            <div className="text-gray-600">
+              {profileLabel(match.profile)} · limit {formatKbps(match.baselineKbps)} · floor {formatKbps(match.floorKbps)} ·
+              latency target {match.slaTargets.latencyMs} ms
             </div>
           </div>
         )}
+
+        <label className="block text-sm">
+          <span className="text-gray-700">Name for this device (shown on the dashboard)</span>
+          <input
+            value={nickname}
+            onChange={(e) => setNickname(e.target.value)}
+            maxLength={32}
+            placeholder="e.g. Ravi’s phone"
+            className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 text-base focus:border-blue-600 focus:outline-none"
+          />
+        </label>
+
+        {error && <p className="text-sm text-red-700">{error}</p>}
 
         <button
           type="submit"
-          disabled={submitting || !code.trim()}
-          className="w-full py-3.5 px-4 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 disabled:opacity-50 text-white font-bold rounded-xl transition duration-150 shadow-lg shadow-blue-900/30 text-sm uppercase tracking-wider"
+          disabled={busy || !code.trim()}
+          className="w-full rounded bg-blue-700 px-4 py-2.5 text-sm font-medium text-white disabled:opacity-50"
         >
-          {submitting ? 'Connecting...' : selectedSlice ? `Join ${selectedSlice.department} Slice` : 'Join Slice'}
+          {busy ? 'Joining…' : match ? `Join ${match.department}` : 'Join'}
         </button>
       </form>
 
-      {/* Available Slices Picker */}
-      <div className="mt-8">
-        <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3 px-1">
-          Available Testbed Slices (Click to Select)
-        </h2>
-
-        {loading ? (
-          <div className="p-8 text-center text-slate-500 text-sm">Loading slice catalogue...</div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {slices.map((s) => {
-              const sliceJoinCode = s.joinCode || s.code.slice(0, 6).toUpperCase();
-              const isSelected = sliceJoinCode === code;
-              return (
+      {slices.length > 0 && (
+        <div className="mt-8">
+          <h2 className="text-sm font-medium text-gray-700">Departments</h2>
+          <ul className="mt-2 divide-y divide-gray-200 rounded border border-gray-200 text-sm">
+            {slices.map((s) => (
+              <li key={s.code}>
                 <button
-                  key={s.code}
                   type="button"
-                  onClick={() => setCode(sliceJoinCode)}
-                  className={`text-left p-4 rounded-xl border transition duration-150 ${
-                    isSelected
-                      ? 'bg-blue-950/40 border-blue-500 ring-1 ring-blue-500'
-                      : 'bg-slate-800/40 border-slate-700/60 hover:bg-slate-800/80 hover:border-slate-600'
-                  }`}
+                  onClick={() => setCode(s.joinCode.toUpperCase())}
+                  className={`flex w-full items-center justify-between px-3 py-2 text-left ${match?.code === s.code ? 'bg-blue-50' : ''}`}
                 >
-                  <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-xs font-bold text-slate-300">{s.department}</span>
-                    <span className="font-mono text-xs font-bold px-2 py-0.5 bg-slate-900 border border-slate-700 rounded text-blue-400">
-                      {sliceJoinCode}
-                    </span>
-                  </div>
-                  <div className="text-sm font-semibold text-slate-100 truncate">{s.name}</div>
-                  <div className="flex items-center justify-between text-xs text-slate-400 mt-2">
-                    <span>Baseline: {formatKbps(s.baselineKbps)}</span>
-                    <span className="px-1.5 py-0.5 rounded bg-slate-900/80 text-[10px] uppercase font-mono">
-                      {s.profile}
-                    </span>
-                  </div>
+                  <span>
+                    {s.department} <span className="text-gray-500">· {s.name}</span>
+                  </span>
+                  <span className="font-mono text-gray-600">{s.joinCode}</span>
                 </button>
-              );
-            })}
-          </div>
-        )}
-      </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }

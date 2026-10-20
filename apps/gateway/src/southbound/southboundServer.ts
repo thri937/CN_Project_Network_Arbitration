@@ -19,6 +19,7 @@ export interface SouthboundServerOptions {
   probeManager: ProbeManager;
   onOperatorDemand?: (sliceCode: string, demandKbps: number, mode?: 'local' | 'internet') => void;
   onLatestDecision?: (sliceCode: string, decisionId: string, reason: string) => void;
+  onUnbindDevice?: (deviceId: string) => boolean;
   /** Length of one measurement window. Rates are averaged over the real elapsed time. */
   statsWindowMs?: number;
 }
@@ -31,6 +32,7 @@ export class SouthboundServer {
   private probeManager: ProbeManager;
   private onOperatorDemand?: (sliceCode: string, demandKbps: number, mode?: 'local' | 'internet') => void;
   private onLatestDecision?: (sliceCode: string, decisionId: string, reason: string) => void;
+  private onUnbindDevice?: (deviceId: string) => boolean;
   private server?: http.Server;
   private startTime = Date.now();
   private statsWindowMs: number;
@@ -45,6 +47,7 @@ export class SouthboundServer {
     this.probeManager = opts.probeManager;
     this.onOperatorDemand = opts.onOperatorDemand;
     this.onLatestDecision = opts.onLatestDecision;
+    this.onUnbindDevice = opts.onUnbindDevice;
     this.statsWindowMs = opts.statsWindowMs ?? 2000;
   }
 
@@ -236,6 +239,16 @@ export class SouthboundServer {
     if (method === 'GET' && pathname === '/v1/devices') {
       const devices = this.deviceRegistry.getActiveDevices();
       this.sendJson(res, 200, devices);
+      return;
+    }
+
+    // DELETE /v1/devices/:id
+    const deviceMatch = pathname.match(/^\/v1\/devices\/([^/]+)$/);
+    if (method === 'DELETE' && deviceMatch) {
+      const removed = this.onUnbindDevice
+        ? this.onUnbindDevice(decodeURIComponent(deviceMatch[1]!))
+        : this.deviceRegistry.removeDevice(decodeURIComponent(deviceMatch[1]!));
+      this.sendJson(res, removed ? 200 : 404, removed ? { removed: true } : { error: 'Device not found' });
       return;
     }
 

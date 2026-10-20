@@ -58,6 +58,7 @@ import {
 } from '@/controllers/telemetry.controller';
 import { createUserController, type UserController } from '@/controllers/user.controller';
 import { createTestbedController } from '@/controllers/testbed.controller';
+import { catalogueFromSlices } from '@/testbed/catalogue';
 import { createLogger } from '@/utils/logger';
 
 const log = createLogger('bootstrap');
@@ -403,6 +404,7 @@ export async function buildContainer(options: BuildOptions = {}): Promise<AppCon
       autoArbitration,
       telemetryProvider,
       slices: repositories.slices,
+      departments: repositories.departments,
       telemetryService: telemetry,
       auditService: audit,
       contention,
@@ -515,50 +517,38 @@ export async function buildContainer(options: BuildOptions = {}): Promise<AppCon
       scheduler.start();
 
       if (telemetryProvider.name === 'gateway' && (telemetryProvider as any).pushCatalogue) {
+        // Send the gateway the stored slices (current limits, department names). Retried every
+        // 3 s until the gateway is up, so the controller and gateway can start in any order.
         const syncCatalogue = async (): Promise<boolean> => {
           try {
             const allSlices = await repositories.slices.listAll();
-            if (allSlices.length > 0) {
-              const cat = allSlices.map((s) => {
-                const jc = s.tags.find((t) => t.startsWith('join:'))?.slice(5) || s.code.slice(0, 6).toUpperCase();
-                return {
-                  code: s.code,
-                  name: s.name,
-                  department: s.departmentId,
-                  sNssai: s.snssai,
-                  profile: s.profile,
-                  baselineKbps: s.baselineAllocatedMbps,
-                  floorKbps: s.minGuaranteedMbps,
-                  burstKbps: s.maxBurstMbps,
-                  currentLimitKbps: s.baselineAllocatedMbps,
-                  slaTargets: {
-                    latencyMs: s.slaTargets.maxLatencyMs,
-                    jitterMs: s.slaTargets.maxJitterMs,
-                    lossPct: s.slaTargets.maxPacketLossPercent,
-                    minThroughputKbps: s.slaTargets.minThroughputMbps,
-                    availabilityPct: s.slaTargets.availabilityPercent,
-                  },
-                  joinCode: jc,
-                };
-              });
-              await (telemetryProvider as any).pushCatalogue(cat);
-              log.info({ slices: cat.length }, 'gateway catalogue synchronized');
-              return true;
-            }
-            return false;
-          } catch (err: any) {
+            if (allSlices.length === 0) return false;
+            const departments = await repositories.departments.listAll();
+            const nameOf = (id: string) => departments.find((d) => d.id === id)?.name ?? id;
+            const cat = catalogueFromSlices(allSlices, nameOf);
+            await (telemetryProvider as any).pushCatalogue(cat);
+            log.info({ slices: cat.length }, 'gateway catalogue synchronized');
+            return true;
+          } catch {
             return false;
           }
         };
 
-        syncCatalogue().then((ok) => {
-          if (!ok) {
-            const timer = setInterval(async () => {
-              const success = await syncCatalogue();
-              if (success) clearInterval(timer);
-            }, 3000);
+        // Check every 3 s. A gateway that has just started (first contact, or a restart that
+        // lost its state) gets the catalogue, including any limits currently in force.
+        let lastUptime = -1;
+        let synced = false;
+        const watchGateway = async () => {
+          try {
+            const uptime = await (telemetryProvider as any).uptimeSeconds();
+            if (!synced || uptime < lastUptime) synced = await syncCatalogue();
+            lastUptime = uptime;
+          } catch {
+            synced = false;
           }
-        });
+        };
+        void watchGateway();
+        setInterval(() => void watchGateway(), 3000).unref();
       }
     },
 

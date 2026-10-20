@@ -2,47 +2,20 @@ import { useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/auth/AuthProvider';
 import { Button, Spinner } from '@/components/ui';
-import { Icons } from '@/components/layout/Icons';
 
-interface QuickUser {
-  role: 'ADMIN' | 'MANAGER' | 'VIEWER';
-  email: string;
-  name: string;
-  description: string;
-  badgeClass: string;
-}
-
-const PRESET_USERS: QuickUser[] = [
-  {
-    role: 'ADMIN',
-    email: 'admin@example.com',
-    name: 'Administrator',
-    description: 'Full control: governing policies, user management & overrides',
-    badgeClass: 'bg-red-500/10 text-red-600 border-red-500/20 dark:text-red-400',
-  },
-  {
-    role: 'MANAGER',
-    email: 'manager@example.com',
-    name: 'Network Manager',
-    description: 'Operations: contention simulation, fault injection & slice controls',
-    badgeClass: 'bg-amber-500/10 text-amber-600 border-amber-500/20 dark:text-amber-400',
-  },
-  {
-    role: 'VIEWER',
-    email: 'viewer@example.com',
-    name: 'Operations Viewer',
-    description: 'Read-only: live telemetry, network topology & contention history',
-    badgeClass: 'bg-blue-500/10 text-blue-600 border-blue-500/20 dark:text-blue-400',
-  },
+/** The three demo accounts the seed creates. Local sign-in: no passwords. */
+const ACCOUNTS: { email: string; name: string; can: string }[] = [
+  { email: 'admin@example.com', name: 'Admin', can: 'Everything, including the business policy, overrides and the audit log.' },
+  { email: 'manager@example.com', name: 'Manager', can: 'Runs the testbed: scenarios, device demand, arbitration on/off.' },
+  { email: 'viewer@example.com', name: 'Viewer', can: 'Watches only.' },
 ];
 
 export function LoginPage(): JSX.Element {
   const { status, error, signInDev } = useAuth();
-  const [customEmail, setCustomEmail] = useState('');
-  const [busyUser, setBusyUser] = useState<string | null>(null);
+  const [other, setOther] = useState('');
+  const [busy, setBusy] = useState<string | null>(null);
 
   if (status === 'authenticated') return <Navigate to="/" replace />;
-
   if (status === 'loading') {
     return (
       <div className="grid min-h-screen place-items-center bg-surface">
@@ -51,135 +24,70 @@ export function LoginPage(): JSX.Element {
     );
   }
 
-  const handleLogin = async (email: string, displayName?: string) => {
-    setBusyUser(email);
+  const signIn = async (email: string, displayName?: string) => {
+    setBusy(email);
     try {
       await signInDev(email, displayName);
     } finally {
-      setBusyUser(null);
+      setBusy(null);
     }
   };
 
   return (
     <div className="grid min-h-screen place-items-center bg-surface px-4 py-10">
-      <div className="w-full max-w-md">
-        {/* Brand Header */}
-        <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-brand/15 text-brand shadow-sm">
-            <Icons.network className="h-7 w-7" />
-          </div>
-          <h1 className="text-xl font-bold tracking-tight text-content">Network Arbitration Platform</h1>
-          <p className="mt-1 text-sm text-content-muted">Enterprise Operations Centre</p>
-        </div>
+      <div className="w-full max-w-sm">
+        <h1 className="text-xl font-semibold text-content">Slice Arbitration Testbed</h1>
+        <p className="mt-1 text-sm text-content-muted">
+          Computer Networks project: business-aware arbitration of enterprise network slices on a real 1 Mbps link.
+        </p>
 
-        <div className="card space-y-6 p-6 shadow-sm border border-edge">
-          {error && (
-            <div className="rounded-lg border border-critical/30 bg-critical/10 px-3.5 py-2.5">
-              <p className="text-xs leading-relaxed text-critical font-medium">{error}</p>
-            </div>
-          )}
+        {error && <p className="mt-4 rounded border border-critical/40 px-3 py-2 text-sm text-critical">{error}</p>}
 
-          {/* Quick 1-Click Role Login */}
-          <div>
-            <label className="text-xs font-semibold uppercase tracking-wider text-content-muted">
-              Select User Role
-            </label>
-            <p className="mt-0.5 text-xs text-content-subtle mb-3">
-              One-click sign-in with preconfigured platform roles
-            </p>
-
-            <div className="space-y-2.5">
-              {PRESET_USERS.map((preset) => {
-                const isLoggingIn = busyUser === preset.email;
-                return (
-                  <button
-                    key={preset.role}
-                    type="button"
-                    disabled={busyUser !== null}
-                    onClick={() => void handleLogin(preset.email, preset.name)}
-                    className="w-full text-left rounded-xl border border-edge hover:border-brand/40 bg-surface-raised hover:bg-surface-sunken p-3.5 transition-all duration-150 flex items-start justify-between gap-3 group disabled:opacity-50 disabled:cursor-not-allowed shadow-xs"
-                  >
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-semibold text-content group-hover:text-brand">
-                          {preset.name}
-                        </span>
-                        <span
-                          className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${preset.badgeClass}`}
-                        >
-                          {preset.role}
-                        </span>
-                      </div>
-                      <p className="text-xs text-content-muted leading-snug">
-                        {preset.description}
-                      </p>
-                      <span className="text-[11px] font-mono text-content-subtle block">
-                        {preset.email}
-                      </span>
-                    </div>
-
-                    <div className="shrink-0 pt-1">
-                      {isLoggingIn ? (
-                        <Spinner className="h-4 w-4 text-brand" />
-                      ) : (
-                        <span className="text-xs font-medium text-brand opacity-0 group-hover:opacity-100 transition-opacity">
-                          Sign in &rarr;
-                        </span>
-                      )}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-edge" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-surface px-2 text-content-subtle">Or custom login</span>
-            </div>
-          </div>
-
-          {/* Custom Identifier Login */}
-          <form
-            className="space-y-3"
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (customEmail.trim()) {
-                void handleLogin(customEmail.trim());
-              }
-            }}
-          >
-            <div>
-              <label htmlFor="custom-login" className="block text-xs font-medium text-content mb-1">
-                Email or Username
-              </label>
-              <input
-                id="custom-login"
-                type="text"
-                value={customEmail}
-                onChange={(e) => setCustomEmail(e.target.value)}
-                placeholder="admin, manager, viewer, or email..."
-                className="w-full rounded-lg border border-edge bg-surface px-3 py-2 text-sm text-content placeholder:text-content-subtle focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
-              />
-            </div>
-
-            <Button
-              variant="secondary"
-              type="submit"
-              className="w-full"
-              loading={busyUser === customEmail}
-              disabled={!customEmail.trim() || busyUser !== null}
+        <div className="mt-6 space-y-2">
+          {ACCOUNTS.map((a) => (
+            <button
+              key={a.email}
+              type="button"
+              disabled={busy !== null}
+              onClick={() => void signIn(a.email, a.name)}
+              className="flex w-full items-center justify-between gap-3 rounded-lg border border-edge bg-surface-raised px-4 py-3 text-left hover:border-brand/50 disabled:opacity-50"
             >
-              Sign in with Custom Account
-            </Button>
-          </form>
+              <span>
+                <span className="block text-sm font-medium text-content">Sign in as {a.name}</span>
+                <span className="block text-xs text-content-muted">{a.can}</span>
+              </span>
+              {busy === a.email && <Spinner className="h-4 w-4 text-brand" />}
+            </button>
+          ))}
         </div>
 
-        <p className="mt-6 text-center text-xs leading-relaxed text-content-subtle">
-          Runtime Arbitration for Contended, SLA-Critical Enterprise Network Slices
+        <form
+          className="mt-6 space-y-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (other.trim()) void signIn(other.trim());
+          }}
+        >
+          <label htmlFor="other-login" className="block text-xs text-content-muted">
+            Or type a name or email (new accounts start as viewers)
+          </label>
+          <div className="flex gap-2">
+            <input
+              id="other-login"
+              type="text"
+              value={other}
+              onChange={(e) => setOther(e.target.value)}
+              placeholder="e.g. manager"
+              className="min-w-0 flex-1 rounded-lg border border-edge bg-surface px-3 py-2 text-sm text-content placeholder:text-content-subtle focus:border-brand focus:outline-none"
+            />
+            <Button type="submit" variant="secondary" loading={busy === other.trim()} disabled={!other.trim() || busy !== null}>
+              Sign in
+            </Button>
+          </div>
+        </form>
+
+        <p className="mt-8 text-xs text-content-subtle">
+          Local sign-in without passwords, for use on your own network only.
         </p>
       </div>
     </div>

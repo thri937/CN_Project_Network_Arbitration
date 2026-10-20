@@ -3,13 +3,13 @@ import path from 'node:path';
 import dotenv from 'dotenv';
 import { z } from 'zod';
 
-// Load environment configuration from root .env or package/cwd paths (except during test runs)
+// Configuration lives in ONE file: the repository-root .env, shared with the gateway. It is read
+// first; a .env in the working directory only fills gaps. Values already in the environment are
+// never overridden, so scripts (demo:local) and tests can set their own. Not read during tests.
 if (process.env.NODE_ENV !== 'test') {
-  dotenv.config({ path: path.resolve(process.cwd(), '.env'), override: true });
-  dotenv.config({ path: path.resolve(__dirname, '../../../.env'), override: true });
-  dotenv.config({ path: path.resolve(__dirname, '../../../../.env'), override: true });
-  dotenv.config({ path: path.resolve(__dirname, '../../.env') });
-  dotenv.config();
+  // src/config and dist/config are both four levels below the repository root.
+  dotenv.config({ path: path.resolve(__dirname, '../../../../.env') });
+  dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 }
 
 /**
@@ -94,8 +94,8 @@ const schema = z.object({
    * verification, and so that role claims are resolved from our own datastore.
    */
   JWT_SECRET: z.string().min(32).default('dev-only-insecure-secret-change-me-in-production!!'),
-  JWT_ISSUER: z.string().default('sentinel-arbitration'),
-  JWT_AUDIENCE: z.string().default('sentinel-dashboard'),
+  JWT_ISSUER: z.string().default('cn-slice-testbed'),
+  JWT_AUDIENCE: z.string().default('cn-slice-testbed-dashboard'),
   JWT_TTL_SECONDS: intFromEnv(3600, 60, 86_400),
   REFRESH_TTL_SECONDS: intFromEnv(60 * 60 * 24 * 14, 3600, 60 * 60 * 24 * 90),
 

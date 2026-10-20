@@ -283,8 +283,8 @@ function buildSliceReason(
   }
 
   const parts: string[] = [
-    `Limit lowered from ${round(candidate.allocatedMbps, 1)} to ${slice.newAllocationMbps} Mbps, ` +
-      `shedding ${slice.reductionMbps} Mbps of the ${round(carriedMbps(candidate), 1)} Mbps it was ` +
+    `Limit lowered from ${round(candidate.allocatedMbps, 1)} to ${slice.newAllocationMbps} kbps, ` +
+      `shedding ${slice.reductionMbps} kbps of the ${round(carriedMbps(candidate), 1)} kbps it was ` +
       `carrying (${round(degradationPercent, 1)}% of its baseline).`,
     `Business score ${round(candidate.priority.score, 1)}/100.`,
   ];
@@ -312,7 +312,7 @@ function buildSliceReason(
 
   parts.push(
     `Depth was capped at ${candidate.maxDegradationPercent}% by ${candidate.departmentName}'s policy, ` +
-      `and the slice remains above its ${round(candidate.minGuaranteedMbps, 1)} Mbps contractual floor.`,
+      `and the slice remains above its ${round(candidate.minGuaranteedMbps, 1)} kbps contractual floor.`,
   );
 
   const sortAlternative = alternatives.find((a) => a.strategy === 'PRIORITY_SORT');
@@ -419,9 +419,9 @@ function buildRationale(
   const exempt = allocations.filter((a) => a.disposition === SliceDisposition.EXEMPT);
 
   const lines: string[] = [
-    `Demand of ${round(request.totalDemandMbps, 1)} Mbps put ${round(carriedLoadMbps(request), 1)} Mbps of ` +
-      `traffic onto the ${round(request.offeredCapacityMbps, 1)} Mbps offered capacity under current limits, ` +
-      `requiring ${round(required, 1)} Mbps of it to be shed (including a ` +
+    `Demand of ${round(request.totalDemandMbps, 1)} kbps put ${round(carriedLoadMbps(request), 1)} kbps of ` +
+      `traffic onto the ${round(request.offeredCapacityMbps, 1)} kbps offered capacity under current limits, ` +
+      `requiring ${round(required, 1)} kbps of it to be shed (including a ` +
       `${round(request.settings.targetHeadroomFraction * 100, 1)}% headroom target).`,
   ];
 
@@ -430,7 +430,7 @@ function buildRationale(
   } else {
     const deepest = [...degraded].sort((a, b) => b.degradationPercent - a.degradationPercent)[0]!;
     lines.push(
-      `The plan degrades ${degraded.length} slice(s) by a total of ${result.achievedReductionMbps} Mbps, ` +
+      `The plan degrades ${degraded.length} slice(s) by a total of ${result.achievedReductionMbps} kbps, ` +
         `the deepest being ${deepest.sliceName} at ${round(deepest.degradationPercent, 1)}%. ` +
         `Reductions were allocated by equalising MARGINAL business harm across slices, which spreads ` +
         `shallow cuts rather than concentrating a deep one — because harm rises superlinearly with ` +
@@ -439,10 +439,26 @@ function buildRationale(
   }
 
   if (exempt.length > 0) {
-    lines.push(
-      `${exempt.length} slice(s) were structurally exempt on compliance or contractual grounds and ` +
-        `were excluded from consideration entirely: ${exempt.map((e) => e.sliceName).join(', ')}.`,
-    );
+    // Two different reasons for not touching a slice, said separately: a compliance ceiling of
+    // 0 % (it may never be cut), or nothing to shed (it already carries no more than the lowest
+    // limit its policy allows, e.g. a slice with no traffic).
+    const ceilingOf = (id: string) =>
+      request.candidates.find((c) => c.sliceId === id)?.maxDegradationPercent ?? 0;
+    const neverCut = exempt.filter((e) => ceilingOf(e.sliceId) <= 0);
+    const nothingToShed = exempt.filter((e) => ceilingOf(e.sliceId) > 0);
+    if (neverCut.length > 0) {
+      lines.push(
+        `${neverCut.map((e) => e.sliceName).join(', ')} may never be cut (compliance ceiling 0%) ` +
+          `and ${neverCut.length === 1 ? 'was' : 'were'} left out entirely.`,
+      );
+    }
+    if (nothingToShed.length > 0) {
+      lines.push(
+        `${nothingToShed.map((e) => e.sliceName).join(', ')} had nothing to shed: ` +
+          `${nothingToShed.length === 1 ? 'it carries' : 'they carry'} no more than the lowest limit ` +
+          `${nothingToShed.length === 1 ? 'its' : 'their'} policy allows.`,
+      );
+    }
   }
 
   const sortAlternative = alternatives.find((a) => a.strategy === 'PRIORITY_SORT');
@@ -484,12 +500,12 @@ function buildEscalation(
       `No slice has degradable headroom. Every candidate is either at its contractual floor or ` +
       `structurally exempt on compliance grounds. Resolve by adding transport capacity, pausing a ` +
       `non-essential slice, or raising a department's maximum permitted degradation. ` +
-      `${round(carriedLoadMbps(request) - request.offeredCapacityMbps, 1)} Mbps of carried traffic exceeds capacity.`
+      `${round(carriedLoadMbps(request) - request.offeredCapacityMbps, 1)} kbps of carried traffic exceeds capacity.`
     );
   }
 
   return (
-    `The plan frees as much as policy permits but leaves a ${round(shortfall, 1)} Mbps shortfall. ` +
+    `The plan frees as much as policy permits but leaves a ${round(shortfall, 1)} kbps shortfall. ` +
     `All available headroom has been consumed within the configured degradation ceilings. ` +
     `The network will continue to drop traffic until demand falls or capacity is added.`
   );
@@ -519,12 +535,12 @@ function notRequiredPlan(request: ArbitrationRequest, startedAt: number): Arbitr
     alternatives: [],
     rationale:
       request.totalDemandMbps > carriedLoadMbps(request) + 1e-6
-        ? `Demand of ${round(request.totalDemandMbps, 1)} Mbps exceeds what current limits let through: ` +
-          `the ${round(carriedLoadMbps(request), 1)} Mbps carried fits within the ` +
-          `${round(request.offeredCapacityMbps, 1)} Mbps offered capacity including the configured headroom. ` +
+        ? `Demand of ${round(request.totalDemandMbps, 1)} kbps exceeds what current limits let through: ` +
+          `the ${round(carriedLoadMbps(request), 1)} kbps carried fits within the ` +
+          `${round(request.offeredCapacityMbps, 1)} kbps offered capacity including the configured headroom. ` +
           `No further degradation is required.`
-        : `Demand of ${round(request.totalDemandMbps, 1)} Mbps fits within the ` +
-          `${round(request.offeredCapacityMbps, 1)} Mbps offered capacity including the configured headroom. ` +
+        : `Demand of ${round(request.totalDemandMbps, 1)} kbps fits within the ` +
+          `${round(request.offeredCapacityMbps, 1)} kbps offered capacity including the configured headroom. ` +
           `No degradation is required.`,
     policyId: request.policyId,
     policyRevision: request.policyRevision,

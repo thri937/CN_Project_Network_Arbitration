@@ -133,7 +133,7 @@ export class SliceService {
       actor,
       summary:
         `Slice '${slice.name}' created for department ${slice.departmentId} ` +
-        `(${slice.baselineAllocatedMbps} Mbps baseline, ${slice.minGuaranteedMbps} Mbps guaranteed)`,
+        `(${slice.baselineAllocatedMbps} kbps baseline, ${slice.minGuaranteedMbps} kbps guaranteed)`,
       target: { type: 'Slice', id: slice.id, name: slice.name, departmentId: slice.departmentId },
       changes: diffFields({}, payload as Record<string, unknown>),
     });
@@ -147,8 +147,8 @@ export class SliceService {
     if (projected <= OFFERED_CAPACITY_MBPS) return;
 
     throw new CapacityExceededError(
-      `Admitting slice '${code}' would commit ${round(projected)} Mbps of guaranteed minimums ` +
-        `against ${OFFERED_CAPACITY_MBPS} Mbps of offered capacity. Arbitration would have no ` +
+      `Admitting slice '${code}' would commit ${round(projected)} kbps of guaranteed minimums ` +
+        `against ${OFFERED_CAPACITY_MBPS} kbps of offered capacity. Arbitration would have no ` +
         `feasible solution: every slice would already be at its contractual floor while the ` +
         `network remained oversubscribed.`,
       {
@@ -232,15 +232,15 @@ export class SliceService {
       };
       if (merged.minGuaranteedMbps > merged.baselineAllocatedMbps) {
         throw new PolicyViolationError(
-          `Guaranteed minimum (${merged.minGuaranteedMbps} Mbps) cannot exceed the baseline ` +
-            `allocation (${merged.baselineAllocatedMbps} Mbps)`,
+          `Guaranteed minimum (${merged.minGuaranteedMbps} kbps) cannot exceed the baseline ` +
+            `allocation (${merged.baselineAllocatedMbps} kbps)`,
           { sliceId: id, ...merged },
         );
       }
       if (merged.baselineAllocatedMbps > merged.maxBurstMbps) {
         throw new PolicyViolationError(
-          `Burst ceiling (${merged.maxBurstMbps} Mbps) cannot be below the baseline allocation ` +
-            `(${merged.baselineAllocatedMbps} Mbps)`,
+          `Burst ceiling (${merged.maxBurstMbps} kbps) cannot be below the baseline allocation ` +
+            `(${merged.baselineAllocatedMbps} kbps)`,
           { sliceId: id, ...merged },
         );
       }
@@ -356,7 +356,7 @@ export class SliceService {
     await this.audit.record({
       action: AuditAction.SLICE_RESUMED,
       actor,
-      summary: `Slice '${resumed.name}' resumed at ${resumed.allocatedMbps} Mbps`,
+      summary: `Slice '${resumed.name}' resumed at ${resumed.allocatedMbps} kbps`,
       target: { type: 'Slice', id, name: resumed.name, departmentId: resumed.departmentId },
     });
 

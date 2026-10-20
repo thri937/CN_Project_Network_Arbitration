@@ -28,7 +28,7 @@ export function createHealthController(deps: { health: HealthRegistry; startedAt
 
     info: (req: Request, res: Response): void => {
       ok(req, res, {
-        service: 'sentinel-arbitration-backend',
+        service: 'slice-testbed-controller',
         version: process.env.npm_package_version ?? '1.0.0',
         environment: env.NODE_ENV,
         node: process.version,

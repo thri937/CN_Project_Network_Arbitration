@@ -262,7 +262,7 @@ export class ArbitrationService {
       body:
         plan.verdict === ArbitrationVerdict.INFEASIBLE
           ? (plan.escalationReason ?? plan.rationale)
-          : `Freed ${round(plan.achievedReductionMbps, 1)} Mbps by degrading ` +
+          : `Freed ${round(plan.achievedReductionMbps, 1)} kbps by degrading ` +
             `${degraded.map((d) => `${d.sliceName} (${round(d.degradationPercent, 1)}%)`).join(', ')}. ` +
             `Confidence ${round(plan.confidence * 100, 0)}%.`,
       broadcast: true,

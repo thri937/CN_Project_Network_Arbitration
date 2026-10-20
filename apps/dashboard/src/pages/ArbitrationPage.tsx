@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { arbitrationApi } from '@/api/resources';
@@ -23,7 +22,6 @@ import {
 } from '@/components/ui';
 import { Icons } from '@/components/layout/Icons';
 import {
-  dispositionStyle,
   formatBandwidth,
   formatDateTime,
   formatPercent,
@@ -32,22 +30,17 @@ import {
   scoreStyle,
   statusStyles,
 } from '@/lib/format';
-import type { ArbitrationPlan } from '@/types/api';
 
 /**
  * Arbitration decisions.
  *
- * The simulate button is the important control here. It computes a plan against live
- * telemetry WITHOUT applying it, so an operator can answer "what would this system do right
- * now?" before trusting it to act unattended. An automated control loop nobody can
- * interrogate is one that gets switched off after its first surprising decision.
+ * Lists every decision. "Arbitrate now" (managers) runs the engine at once on an open contention.
  */
 export function ArbitrationPage(): JSX.Element {
   const { isManager } = useAuth();
   const queryClient = useQueryClient();
   const { data: contention } = useContention();
 
-  const [plan, setPlan] = useState<ArbitrationPlan | null>(null);
 
   const { data: decisions, isLoading } = useQuery({
     queryKey: queryKeys.arbitration.list(),
@@ -61,15 +54,9 @@ export function ArbitrationPage(): JSX.Element {
     refetchInterval: 60_000,
   });
 
-  const simulate = useMutation({
-    mutationFn: () => arbitrationApi.simulate(),
-    onSuccess: (result) => setPlan(result.plan),
-  });
-
   const trigger = useMutation({
     mutationFn: () => arbitrationApi.trigger(false),
     onSuccess: () => {
-      setPlan(null);
       void queryClient.invalidateQueries({ queryKey: queryKeys.arbitration.all() });
       void queryClient.invalidateQueries({ queryKey: queryKeys.slices.all() });
     },
@@ -80,14 +67,11 @@ export function ArbitrationPage(): JSX.Element {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Arbitration Decisions"
-        description="Every decision is permanent, explainable and reversible."
+        title="Decisions"
+        description="Each time the link was overloaded: who was cut, by how much, and why. Click a decision for the full explanation."
         action={
           isManager && (
             <div className="flex items-center gap-2">
-              <Button size="sm" loading={simulate.isPending} onClick={() => simulate.mutate()}>
-                Simulate
-              </Button>
               {contention?.open && (
                 <Tooltip
                   content={
@@ -112,87 +96,15 @@ export function ArbitrationPage(): JSX.Element {
         }
       />
 
-      {(simulate.error || trigger.error) && (
+      {trigger.error && (
         <div className="rounded-lg border border-critical/30 bg-critical/10 px-4 py-3">
           <p className="text-xs text-critical">
-            {[simulate.error, trigger.error]
+            {[trigger.error]
               .filter((e): e is ApiError => e instanceof ApiError)
               .map((e) => e.message)
               .join(' ')}
           </p>
         </div>
-      )}
-
-      {/* ---- Simulation result ---- */}
-      {plan && (
-        <Card className="border-brand/40">
-          <CardHeader
-            title="Simulated plan — not applied"
-            subtitle="What the engine would do against the current network state"
-            action={
-              <button
-                onClick={() => setPlan(null)}
-                className="rounded p-1 text-content-muted hover:text-content"
-                aria-label="Dismiss simulation"
-              >
-                <Icons.close className="h-4 w-4" />
-              </button>
-            }
-          />
-          <CardBody className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-4">
-              <Metric label="Verdict" value={plan.verdict} />
-              <Metric
-                label="Would free"
-                value={formatBandwidth(plan.achievedReductionMbps)}
-                hint={`of ${formatBandwidth(plan.requiredReductionMbps)} needed`}
-              />
-              <Metric label="Confidence" value={formatPercent(plan.confidence * 100, 0)} />
-              <Metric
-                label="Slices degraded"
-                value={plan.allocations.filter((a) => a.disposition === 'DEGRADED').length}
-              />
-            </div>
-
-            <p className="text-xs leading-relaxed text-content-muted">{plan.rationale}</p>
-
-            <Table>
-              <thead>
-                <tr>
-                  <Th>Slice</Th>
-                  <Th>Disposition</Th>
-                  <Th align="right">Score</Th>
-                  <Th align="right">Would change</Th>
-                </tr>
-              </thead>
-              <tbody>
-                {plan.allocations
-                  .slice()
-                  .sort((a, b) => b.reductionMbps - a.reductionMbps)
-                  .map((allocation) => (
-                    <tr key={allocation.sliceId}>
-                      <Td className="font-medium">{allocation.sliceName}</Td>
-                      <Td>
-                        <Badge style={dispositionStyle(allocation.disposition)} className="text-[10px]">
-                          {allocation.disposition}
-                        </Badge>
-                      </Td>
-                      <Td align="right">{allocation.businessScore.toFixed(1)}</Td>
-                      <Td align="right">
-                        {allocation.reductionMbps > 0.01 ? (
-                          <span className="text-critical">
-                            −{formatPercent(allocation.degradationPercent, 1)}
-                          </span>
-                        ) : (
-                          <span className="text-content-subtle">—</span>
-                        )}
-                      </Td>
-                    </tr>
-                  ))}
-              </tbody>
-            </Table>
-          </CardBody>
-        </Card>
       )}
 
       {/* ---- Summary ---- */}

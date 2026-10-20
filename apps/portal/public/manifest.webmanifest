@@ -1,15 +1,9 @@
 {
-  "name": "Slice Portal",
-  "short_name": "SlicePortal",
+  "name": "Department slice",
+  "short_name": "Slice",
   "start_url": "/join",
   "display": "standalone",
-  "background_color": "#0f172a",
-  "theme_color": "#1e293b",
-  "icons": [
-    {
-      "src": "/favicon.ico",
-      "sizes": "64x64 32x32 24x24 16x16",
-      "type": "image/x-icon"
-    }
-  ]
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml" }]
 }

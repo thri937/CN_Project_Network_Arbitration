@@ -111,6 +111,31 @@ export class SliceAgent {
     return this.boundDevice;
   }
 
+  /**
+   * After the live connection drops: if the gateway still knows this device, just reconnect; if
+   * it restarted and forgot it, join again with the same code and carry on at the same rate.
+   */
+  private async reconnect(): Promise<void> {
+    if (!this.running || !this.boundDevice) return;
+    try {
+      const res = await fetch(`${this.gatewayUrl}/portal-api/snapshot?device=${this.boundDevice.deviceId}`);
+      if (res.status === 404 || res.status === 403) {
+        const joinRes = await fetch(`${this.gatewayUrl}/portal-api/join`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code: this.code, nickname: this.nickname }),
+        });
+        if (!joinRes.ok) throw new Error(`join failed (${joinRes.status})`);
+        this.boundDevice = (await joinRes.json()) as BoundDevice;
+        this.log(`Gateway restarted; joined again as ${this.boundDevice.deviceId}.`);
+        this.startLoadStreaming(this.rateKbps);
+      }
+      this.connectWebSocket();
+    } catch {
+      setTimeout(() => void this.reconnect(), 3000);
+    }
+  }
+
   private connectWebSocket() {
     if (!this.boundDevice) return;
     const wsUrl = this.gatewayUrl.replace(/^http/, 'ws') + `/ws?device=${this.boundDevice.deviceId}`;
@@ -132,13 +157,16 @@ export class SliceAgent {
             const newRate = msg.rateKbps;
             this.log(`Received remote operator demand: ${newRate} kbps`);
             this.updateRate(newRate);
+          } else if (msg.type === 'unbound') {
+            this.log('Removed from the slice by the operator; stopping.');
+            void this.stop();
           }
         } catch {}
       };
 
       this.ws.onclose = () => {
         if (this.running) {
-          setTimeout(() => this.connectWebSocket(), 3000);
+          setTimeout(() => void this.reconnect(), 3000);
         }
       };
 
@@ -323,6 +351,9 @@ export async function runAgentCli() {
   }
 }
 
-if (process.env.NODE_ENV !== 'test' && (process.argv[1]?.includes('agent') || process.argv.includes('--code'))) {
+// Run as a command only when started directly (tsx apps/agent/src/index.ts, node dist/index.js, the
+// .exe), or when given --code. Importing the module from another script never starts the CLI.
+const ENTRY = /[\\/]agent[\\/](src|dist)[\\/]index\.[jt]s$|slice-agent(\.exe)?$|agent-bundle\.cjs$/i;
+if (process.env.NODE_ENV !== 'test' && (process.argv.includes('--code') || ENTRY.test(process.argv[1] ?? ''))) {
   runAgentCli();
 }

@@ -115,7 +115,7 @@ export function DecisionDetailPage(): JSX.Element {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Arbitration decision"
+        title="Decision"
         description={
           <span>
             <span className="font-mono text-xs">{decision.id}</span> ·{' '}
@@ -386,7 +386,7 @@ export function DecisionDetailPage(): JSX.Element {
                 {Object.entries(decision.diagnostics).map(([key, value]) => (
                   <div key={key} className="flex justify-between gap-2">
                     <dt className="truncate text-content-subtle">
-                      {humanise(key.replace(/([A-Z])/g, '_$1'))}
+                      {DIAGNOSTIC_LABELS[key] ?? humanise(key.replace(/([A-Z])/g, '_$1'))}
                     </dt>
                     <dd className="tabular text-content">{String(value)}</dd>
                   </div>
@@ -400,7 +400,7 @@ export function DecisionDetailPage(): JSX.Element {
       {/* ---- Audit trail (administrators) ---- */}
       {isAdmin && timeline && timeline.entries.length > 0 && (
         <Card>
-          <CardHeader title="Audit trail" subtitle="Immutable record of everything that touched this decision" />
+          <CardHeader title="Audit trail" subtitle="Everything recorded about this decision" />
           <CardBody className="p-0">
             <ul className="divide-y divide-edge/60">
               {timeline.entries.map((entry) => (
@@ -462,7 +462,7 @@ function AllocationRow({
         <Td className="text-content-muted">{allocation.departmentName}</Td>
         <Td>
           <Badge style={style} className="text-[10px]">
-            {allocation.disposition}
+            {dispositionLabel(allocation)}
           </Badge>
         </Td>
         <Td align="right">
@@ -678,3 +678,29 @@ function OverrideDialog({
     </div>
   );
 }
+
+/** Plain labels for the engine's dispositions. EXEMPT covers two cases; say which. */
+function dispositionLabel(allocation: DecisionAllocation): string {
+  switch (allocation.disposition) {
+    case 'DEGRADED':
+      return 'Cut';
+    case 'PROTECTED':
+      return 'Protected';
+    case 'UNAFFECTED':
+      return 'Not cut';
+    case 'EXEMPT':
+      return allocation.factors.maxDegradationPercent <= 0 ? 'Never cut' : 'Nothing to shed';
+    default:
+      return allocation.disposition;
+  }
+}
+
+/** The solver's diagnostics, in this testbed's unit (1 engine unit = 1 kbps). */
+const DIAGNOSTIC_LABELS: Record<string, string> = {
+  quantumMbps: 'Step size (kbps)',
+  iterations: 'Steps',
+  candidatesConsidered: 'Slices considered',
+  eligibleCandidates: 'Slices that could be cut',
+  computeMs: 'Compute time (ms)',
+  converged: 'Converged',
+};

@@ -18,6 +18,15 @@ const SCENARIO = testbedScenario(env.NETWORK_TOTAL_CAPACITY_MBPS);
 
 
 async function main(): Promise<void> {
+  // 10,000 is the simulated project's 10 Gbps setting. Seeding with it here makes every slice
+  // ten times too big for the 1 Mbps link (the "9.50 Mbps" bug), so refuse.
+  if (env.NETWORK_TOTAL_CAPACITY_MBPS > 8000) {
+    console.error(
+      `\n✗ NETWORK_TOTAL_CAPACITY_MBPS is ${env.NETWORK_TOTAL_CAPACITY_MBPS}. The testbed unit is kbps: ` +
+        'set NETWORK_TOTAL_CAPACITY_MBPS=1000 (1 Mbps) in the .env at the repository root, then seed again.\n',
+    );
+    process.exit(1);
+  }
   console.log(`\n▸ Seeding testbed: scale factor s = ${s} (${env.NETWORK_TOTAL_CAPACITY_MBPS} kbps total)\n`);
 
   const container = await buildContainer({ headless: true });

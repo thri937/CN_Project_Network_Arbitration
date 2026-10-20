@@ -76,7 +76,6 @@
 
   body {
     @apply bg-surface text-content font-sans;
-    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
   }
 
   /* Numeric readouts must not jitter as digits change — a metric updating twice a second
@@ -106,7 +105,7 @@
 
 @layer components {
   .card {
-    @apply bg-surface-raised border border-edge rounded-xl;
+    @apply bg-surface-raised border border-edge rounded-lg;
   }
 
   .card-hover {
@@ -126,7 +125,7 @@
   }
 
   .label {
-    @apply text-xs font-medium uppercase tracking-wider text-content-subtle;
+    @apply text-xs font-medium text-content-muted;
   }
 }
 

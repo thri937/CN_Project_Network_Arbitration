@@ -1,80 +1,90 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import type { BoundDevice } from './types';
 import { JoinPage } from './components/JoinPage';
 import { SlicePage } from './components/SlicePage';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
-// The bound device lives in sessionStorage, which is separate for every tab, so several tabs on
-// one laptop can each join a different slice. The nickname stays in localStorage as a convenience.
+// The joined slice lives in sessionStorage, which is separate for every browser tab, so several
+// tabs on one laptop can each be a different department. The nickname is kept in localStorage.
 const DEVICE_KEY = 'cn_bound_device';
+const CODE_KEY = 'cn_join_code';
+
+function readStored(): BoundDevice | null {
+  try {
+    const stored = sessionStorage.getItem(DEVICE_KEY);
+    return stored ? (JSON.parse(stored) as BoundDevice) : null;
+  } catch {
+    return null;
+  }
+}
 
 export default function App() {
-  const [device, setDevice] = useState<BoundDevice | null>(() => {
-    try {
-      const stored = sessionStorage.getItem(DEVICE_KEY);
-      return stored ? JSON.parse(stored) : null;
-    } catch {
-      return null;
-    }
-  });
+  const [device, setDevice] = useState<BoundDevice | null>(readStored);
 
+  // A link with ?device=… (the address bar after joining) restores that device in a new tab.
   useEffect(() => {
-    // If URL has ?device=... but not in state, attempt to load device
-    const params = new URLSearchParams(window.location.search);
-    const deviceIdParam = params.get('device');
-    if (deviceIdParam && (!device || device.deviceId !== deviceIdParam)) {
-      fetch(`/portal-api/snapshot?device=${deviceIdParam}`)
-        .then((res) => {
-          if (res.ok) return res.json();
-          throw new Error('Not found');
-        })
-        .then((snap) => {
-          const bound: BoundDevice = {
-            deviceId: deviceIdParam,
-            sliceCode: snap.slice.code,
-            nickname: localStorage.getItem('cn_device_nickname') || 'Client Device',
-            sourceIp: '127.0.0.1',
-            lastSeenMs: Date.now(),
-            activeRateKbps: 0,
-            mode: 'local',
-            operatorControlEnabled: true,
-          };
-          sessionStorage.setItem(DEVICE_KEY, JSON.stringify(bound));
-          setDevice(bound);
-        })
-        .catch(() => {
-          // ignore
-        });
-    }
+    const id = new URLSearchParams(window.location.search).get('device');
+    if (!id || device?.deviceId === id) return;
+    fetch(`/portal-api/snapshot?device=${encodeURIComponent(id)}`)
+      .then((res) => (res.ok ? res.json() : Promise.reject(new Error('not found'))))
+      .then((snap) => {
+        const bound: BoundDevice = {
+          deviceId: id,
+          sliceCode: snap.slice.code,
+          nickname: localStorage.getItem('cn_device_nickname') || 'Device',
+          sourceIp: '',
+          lastSeenMs: Date.now(),
+          activeRateKbps: 0,
+          mode: 'local',
+          operatorControlEnabled: true,
+        };
+        sessionStorage.setItem(DEVICE_KEY, JSON.stringify(bound));
+        setDevice(bound);
+      })
+      .catch(() => window.history.replaceState({}, '', '/join'));
   }, [device]);
 
-  const handleJoined = (bound: BoundDevice) => {
+  const joined = (bound: BoundDevice, joinCode?: string) => {
     sessionStorage.setItem(DEVICE_KEY, JSON.stringify(bound));
+    if (joinCode) sessionStorage.setItem(CODE_KEY, joinCode);
     setDevice(bound);
-    window.history.replaceState({}, '', `?device=${bound.deviceId}`);
+    window.history.replaceState({}, '', `/slice?device=${bound.deviceId}`);
   };
 
-  const handleLeave = () => {
+  // The gateway restarted and forgot this device: join the same slice again without asking.
+  const lost = async () => {
+    const code = sessionStorage.getItem(CODE_KEY);
+    if (!code || !device) return leave();
+    try {
+      const res = await fetch('/portal-api/join', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code, nickname: device.nickname }),
+      });
+      if (!res.ok) return leave();
+      const body = await res.json();
+      joined({ ...device, deviceId: body.deviceId, sliceCode: body.slice?.code ?? device.sliceCode }, code);
+    } catch {
+      leave();
+    }
+  };
+
+  const leave = () => {
     sessionStorage.removeItem(DEVICE_KEY);
+    sessionStorage.removeItem(CODE_KEY);
     setDevice(null);
-    window.history.replaceState({}, '', '/');
+    window.history.replaceState({}, '', '/join');
   };
 
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col justify-between">
-      <main className="flex-1">
-        <ErrorBoundary>
-          {device ? (
-            <SlicePage device={device} onLeave={handleLeave} />
-          ) : (
-            <JoinPage onJoined={handleJoined} />
-          )}
-        </ErrorBoundary>
-      </main>
-
-      <footer className="py-4 text-center text-xs text-slate-500 border-t border-slate-800">
-        Real-Network 5G CBHA Arbitration Testbed • Edge Slice Gateway Portal
-      </footer>
+    <div className="min-h-screen bg-white text-gray-900">
+      <ErrorBoundary>
+        {device ? (
+          <SlicePage key={device.deviceId} device={device} onLeave={leave} onLost={() => void lost()} />
+        ) : (
+          <JoinPage onJoined={joined} />
+        )}
+      </ErrorBoundary>
     </div>
   );
 }

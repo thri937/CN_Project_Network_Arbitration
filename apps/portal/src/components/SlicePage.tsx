@@ -1,527 +1,378 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
-import type { SliceSnapshot, BoundDevice, ChartSample } from '../types';
-import { formatKbps, formatMs } from '../utils/format';
-import { ThroughputChart } from './ThroughputChart';
-import { LatencyChart } from './LatencyChart';
-import { SlaStatusGrid } from './SlaStatusGrid';
-import { ChartErrorBoundary } from './ChartErrorBoundary';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import type { BoundDevice, SliceSnapshot } from '../types';
+import { formatKbps, formatMs, formatPercent, profileLabel } from '../utils/format';
 
 interface Props {
   device: BoundDevice;
+  /** The operator removed this device: back to the join page. */
   onLeave: () => void;
+  /** The gateway no longer knows this device (it restarted): join again. */
+  onLost: () => void;
 }
 
-export function SlicePage({ device, onLeave }: Props) {
+interface Point {
+  t: string;
+  demand: number;
+  limit: number;
+  carried: number;
+  latency: number | null;
+}
+
+const PRESETS = [
+  { label: 'Idle', fraction: 0 },
+  { label: 'Light 30 %', fraction: 0.3 },
+  { label: 'Normal 55 %', fraction: 0.55 },
+  { label: 'Busy 80 %', fraction: 0.8 },
+  { label: 'Peak 100 %', fraction: 1 },
+  { label: 'Flood 200 %', fraction: 2 },
+];
+
+export function SlicePage({ device, onLeave, onLost }: Props) {
+  // Callbacks from the parent change identity on every render; keep the latest in refs so the
+  // live connection is not torn down and rebuilt each time.
+  const onLeaveRef = useRef(onLeave);
+  const onLostRef = useRef(onLost);
+  onLeaveRef.current = onLeave;
+  onLostRef.current = onLost;
+
   const [snapshot, setSnapshot] = useState<SliceSnapshot | null>(null);
-  const [wsConnected, setWsConnected] = useState(false);
-  const [demandRate, setDemandRate] = useState<number>(0);
-  const [trafficMode, setTrafficMode] = useState<'local' | 'internet'>('local');
-  const [history, setHistory] = useState<ChartSample[]>([]);
-  const [streamingActive, setStreamingActive] = useState(false);
-  const [streamBytes, setStreamBytes] = useState(0);
+  const [connected, setConnected] = useState(false);
+  const [rate, setRate] = useState(0); // demand being sent, kbps
+  const [draft, setDraft] = useState(0); // slider position while dragging
+  const [mode, setMode] = useState<'local' | 'internet'>('local');
+  const [received, setReceived] = useState(0); // bytes since joining
+  const [streaming, setStreaming] = useState(false);
+  const [history, setHistory] = useState<Point[]>([]);
+  const [operatorNote, setOperatorNote] = useState<string | null>(null);
 
-  const abortControllerRef = useRef<AbortController | null>(null);
-  const initializedRef = useRef<boolean>(false);
-  const probeSeqRef = useRef<number>(1);
-  const probeBufferRef = useRef<Array<{ seq: number; sentAtMs: number; recvAtMs: number; rttMs: number }>>([]);
+  const abortRef = useRef<AbortController | null>(null);
+  const startedRef = useRef(false);
+  const probeSeq = useRef(1);
+  const probeBuffer = useRef<{ seq: number; sentAtMs: number; recvAtMs: number; rttMs: number }[]>([]);
 
-  // Fetch initial snapshot
-  const fetchSnapshot = useCallback(async () => {
-    try {
-      const res = await fetch(`/portal-api/snapshot?device=${device.deviceId}`);
-      if (res.ok) {
-        const data: SliceSnapshot = await res.json();
-        setSnapshot(data);
-        if (!initializedRef.current && data.slice) {
-          initializedRef.current = true;
-          // Initialize slider to normal (55% of baseline) only once on mount
-          setDemandRate(Math.round(data.slice.baselineKbps * 0.55));
-        }
-      } else if (res.status === 404 || res.status === 403) {
-        // Device session expired or gateway restarted - return to join screen cleanly
-        onLeave();
-      }
-    } catch {
-      // ignore
+  const applySnapshot = useCallback((snap: SliceSnapshot) => {
+    if (!snap?.slice || !snap.stats) return;
+    setSnapshot(snap);
+    // Start at Normal (55 % of baseline) once, when the slice is first known.
+    if (!startedRef.current) {
+      startedRef.current = true;
+      const normal = Math.round(snap.slice.baselineKbps * 0.55);
+      setRate(normal);
+      setDraft(normal);
     }
-  }, [device.deviceId, onLeave]);
+    const now = new Date();
+    const t = `${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+    setHistory((prev) =>
+      [
+        ...prev,
+        {
+          t,
+          demand: snap.stats.demandKbps,
+          limit: snap.stats.limitKbps,
+          carried: snap.stats.usedKbps,
+          latency: snap.stats.latencyP95Ms,
+        },
+      ].slice(-90),
+    );
+  }, []);
 
-  // Connect WebSocket for live 1-second snapshots & operator override
+  // Snapshot over HTTP: on load, and after every reconnect. If the gateway no longer knows this
+  // device (it restarted), join again.
+  const checkDevice = useCallback(() => {
+    fetch(`/portal-api/snapshot?device=${encodeURIComponent(device.deviceId)}`)
+      .then((res) => {
+        if (res.status === 404 || res.status === 403) {
+          onLostRef.current();
+          return null;
+        }
+        return res.ok ? res.json() : null;
+      })
+      .then((snap) => snap && applySnapshot(snap))
+      .catch(() => undefined);
+  }, [device.deviceId, applySnapshot]);
+
+  useEffect(() => checkDevice(), [checkDevice]);
+
+  // Live updates once a second, and operator commands from the dashboard.
   useEffect(() => {
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}/ws?device=${device.deviceId}`;
+    const url = `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/ws?device=${encodeURIComponent(device.deviceId)}`;
     let ws: WebSocket | null = null;
-    let reconnectTimeout: any = null;
+    let retry: ReturnType<typeof setTimeout> | undefined;
+    let stopped = false;
 
     const connect = () => {
-      try {
-        ws = new WebSocket(wsUrl);
-
-        ws.onopen = () => {
-          setWsConnected(true);
-        };
-
-        ws.onmessage = (event) => {
-          try {
-            const msg = JSON.parse(event.data);
-            if (msg.type === 'snapshot') {
-              const snap = (msg.snapshot || msg.data) as SliceSnapshot;
-              if (!snap || !snap.stats) return;
-
-              setSnapshot(snap);
-
-              // Update history for graphs
-              const now = new Date();
-              const timeStr = `${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
-              setHistory((prev) => {
-                const sample: ChartSample = {
-                  time: timeStr,
-                  demandKbps: snap.stats.demandKbps ?? 0,
-                  limitKbps: snap.stats.limitKbps ?? 0,
-                  usedKbps: snap.stats.usedKbps ?? 0,
-                  droppedKbps: snap.stats.droppedKbps ?? 0,
-                  latencyMs: snap.stats.latencyP95Ms ?? 0,
-                  jitterMs: snap.stats.jitterMs ?? 0,
-                  lossPct: snap.stats.lossPct ?? 0,
-                };
-                const updated = [...prev, sample];
-                return updated.length > 60 ? updated.slice(updated.length - 60) : updated;
-              });
-            } else if (msg.type === 'operator-demand') {
-              // Remote override from operator in dashboard!
-              setDemandRate(msg.rateKbps);
-              if (msg.mode) setTrafficMode(msg.mode);
-            }
-          } catch {
-            // ignore
+      ws = new WebSocket(url);
+      ws.onopen = () => {
+        setConnected(true);
+        checkDevice();
+      };
+      ws.onmessage = (event) => {
+        try {
+          const msg = JSON.parse(event.data);
+          if (msg.type === 'snapshot') applySnapshot(msg.snapshot ?? msg.data);
+          if (msg.type === 'operator-demand') {
+            setRate(msg.rateKbps);
+            setDraft(msg.rateKbps);
+            if (msg.mode) setMode(msg.mode);
+            setOperatorNote(`The operator set this slice to ${formatKbps(msg.rateKbps)}.`);
           }
-        };
-
-        ws.onclose = () => {
-          setWsConnected(false);
-          reconnectTimeout = setTimeout(connect, 2000);
-        };
-
-        ws.onerror = () => {
-          ws?.close();
-        };
-      } catch {
-        setWsConnected(false);
-        reconnectTimeout = setTimeout(connect, 3000);
-      }
+          if (msg.type === 'unbound') {
+            stopped = true;
+            onLeaveRef.current();
+          }
+        } catch {
+          /* ignore malformed frames */
+        }
+      };
+      ws.onclose = () => {
+        setConnected(false);
+        if (!stopped) retry = setTimeout(connect, 2000);
+      };
+      ws.onerror = () => ws?.close();
     };
-
     connect();
-    fetchSnapshot();
 
     return () => {
-      clearTimeout(reconnectTimeout);
+      stopped = true;
+      clearTimeout(retry);
       if (ws) {
         ws.onclose = null;
         ws.close();
       }
     };
-  }, [device.deviceId, fetchSnapshot]);
+  }, [device.deviceId, applySnapshot, checkDevice]);
 
-  // Periodic client-side active RTT probing every 1000ms
+  // Latency probes: one a second through this slice's queue, results reported every 3 s.
   useEffect(() => {
-    const probeInterval = setInterval(async () => {
-      const seq = probeSeqRef.current++;
+    const probe = setInterval(async () => {
+      const seq = probeSeq.current++;
       const sentAt = Date.now();
       try {
-        const res = await fetch(`/probe?device=${device.deviceId}&seq=${seq}`, {
-          cache: 'no-store',
-        });
+        const res = await fetch(`/probe?device=${encodeURIComponent(device.deviceId)}&seq=${seq}`, { cache: 'no-store' });
         if (res.ok) {
           const recvAt = Date.now();
-          const rtt = Math.max(1, recvAt - sentAt);
-          probeBufferRef.current.push({
-            seq,
-            sentAtMs: sentAt,
-            recvAtMs: recvAt,
-            rttMs: rtt,
-          });
+          probeBuffer.current.push({ seq, sentAtMs: sentAt, recvAtMs: recvAt, rttMs: Math.max(1, recvAt - sentAt) });
         }
       } catch {
-        // probe failed or dropped
+        /* a lost probe counts as loss on the gateway */
       }
     }, 1000);
-
-    // Flush probe buffer to gateway every 3 seconds
-    const flushInterval = setInterval(async () => {
-      if (probeBufferRef.current.length > 0) {
-        const batch = [...probeBufferRef.current];
-        probeBufferRef.current = [];
-        try {
-          await fetch('/portal-api/probe-results', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              deviceId: device.deviceId,
-              results: batch,
-            }),
-          });
-        } catch {
-          // ignore
-        }
-      }
+    const flush = setInterval(() => {
+      if (!probeBuffer.current.length) return;
+      const results = probeBuffer.current.splice(0);
+      fetch('/portal-api/probe-results', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deviceId: device.deviceId, results }),
+      }).catch(() => undefined);
     }, 3000);
-
     return () => {
-      clearInterval(probeInterval);
-      clearInterval(flushInterval);
+      clearInterval(probe);
+      clearInterval(flush);
     };
   }, [device.deviceId]);
 
-  // Stream load based on demandRate
-  const startLoadStreaming = useCallback((rate: number, mode: 'local' | 'internet') => {
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-      abortControllerRef.current = null;
-    }
-
+  // The load itself: one download stream at the chosen rate. Restarted when the rate or mode changes.
+  useEffect(() => {
+    abortRef.current?.abort();
+    abortRef.current = null;
     if (rate <= 0) {
-      setStreamingActive(false);
+      setStreaming(false);
       return;
     }
-
     const abort = new AbortController();
-    abortControllerRef.current = abort;
-    setStreamingActive(true);
-
-    fetch(`/load/down?device=${device.deviceId}&rate=${rate}&mode=${mode}`, {
+    abortRef.current = abort;
+    setStreaming(true);
+    fetch(`/load/down?device=${encodeURIComponent(device.deviceId)}&rate=${rate}&mode=${mode}`, {
       signal: abort.signal,
       cache: 'no-store',
     })
       .then(async (response) => {
-        if (!response.ok || !response.body) {
-          throw new Error('Failed to start load stream');
-        }
+        if (!response.ok || !response.body) throw new Error('stream refused');
         const reader = response.body.getReader();
-        while (true) {
+        for (;;) {
           const { done, value } = await reader.read();
           if (done) break;
-          if (value) {
-            setStreamBytes((prev) => prev + value.length);
-          }
+          if (value) setReceived((b) => b + value.length);
         }
-        setStreamingActive(false);
       })
-      .catch((err) => {
-        if (err.name !== 'AbortError') {
-          console.error('Load stream error:', err);
-        }
-        setStreamingActive(false);
+      .catch(() => undefined)
+      .finally(() => {
+        if (abortRef.current === abort) setStreaming(false);
       });
-  }, [device.deviceId]);
-
-  // Handle demand rate or traffic mode change
-  useEffect(() => {
-    if (demandRate > 0) {
-      startLoadStreaming(demandRate, trafficMode);
-    } else {
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-        abortControllerRef.current = null;
-      }
-      setStreamingActive(false);
-    }
-
-    return () => {
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-        abortControllerRef.current = null;
-      }
-    };
-  }, [demandRate, trafficMode, startLoadStreaming]);
+    return () => abort.abort();
+  }, [rate, mode, device.deviceId]);
 
   if (!snapshot) {
+    return <div className="mx-auto max-w-md px-5 py-16 text-sm text-gray-600">Connecting to the gateway…</div>;
+  }
+
+  const { slice, stats } = snapshot;
+  const baseline = slice.baselineKbps;
+  const cut = stats.limitKbps < baseline;
+  const cutPct = Math.round((1 - stats.limitKbps / baseline) * 100);
+  const latencyOver = stats.latencyP95Ms !== null && stats.latencyP95Ms > slice.slaTargets.latencyMs;
+  const lossOver = stats.lossPct > slice.slaTargets.lossPct;
+  const measured = stats.latencyP95Ms !== null;
+
+  return (
+    <div className="mx-auto max-w-2xl space-y-5 px-5 py-6">
+      <header className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-lg font-semibold">{slice.department}</h1>
+          <p className="text-sm text-gray-600">
+            {slice.name} · {profileLabel(slice.profile)} · code <span className="font-mono">{slice.joinCode}</span>
+          </p>
+          <p className="mt-0.5 text-xs text-gray-500">
+            {device.nickname} · {connected ? 'live' : 'reconnecting…'}
+          </p>
+        </div>
+        <button onClick={() => onLeaveRef.current()} className="rounded border border-gray-300 px-3 py-1.5 text-sm">
+          Leave
+        </button>
+      </header>
+
+      {cut ? (
+        <div className="rounded border border-amber-300 bg-amber-50 px-4 py-3 text-sm">
+          <div className="font-medium text-amber-900">
+            This slice has been cut by {cutPct} %: limit {formatKbps(stats.limitKbps)} instead of {formatKbps(baseline)}.
+          </div>
+          {snapshot.latestDecision && <p className="mt-1 text-amber-900/90">{snapshot.latestDecision.reason}</p>}
+          <p className="mt-1 text-xs text-amber-800">
+            The link is overloaded, and this department costs the least to slow down. It will never go below{' '}
+            {formatKbps(slice.floorKbps)}.
+          </p>
+        </div>
+      ) : (
+        <div className="rounded border border-gray-200 px-4 py-3 text-sm text-gray-700">
+          Running at the full limit of {formatKbps(baseline)}.
+        </div>
+      )}
+      {operatorNote && <p className="text-xs text-gray-500">{operatorNote}</p>}
+
+      <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <Figure label="Limit now" value={formatKbps(stats.limitKbps)} note={`floor ${formatKbps(slice.floorKbps)}`} />
+        <Figure label="Getting through" value={formatKbps(stats.usedKbps)} note={`asking for ${formatKbps(stats.demandKbps)}`} />
+        <Figure
+          label="Latency (p95)"
+          value={formatMs(stats.latencyP95Ms)}
+          note={`target ${formatMs(slice.slaTargets.latencyMs)}`}
+          bad={latencyOver}
+        />
+        <Figure
+          label="Loss"
+          value={measured || stats.demandKbps > 0 ? formatPercent(stats.lossPct) : '—'}
+          note={`target ${formatPercent(slice.slaTargets.lossPct)}`}
+          bad={lossOver}
+        />
+      </section>
+
+      <section className="rounded border border-gray-200 p-4">
+        <h2 className="text-sm font-medium">How much traffic to send</h2>
+        <div className="mt-3 grid grid-cols-3 gap-2">
+          {PRESETS.map((p) => {
+            const kbps = Math.round(baseline * p.fraction);
+            return (
+              <button
+                key={p.label}
+                onClick={() => {
+                  setRate(kbps);
+                  setDraft(kbps);
+                  setOperatorNote(null);
+                }}
+                className={`rounded border px-2 py-2 text-xs ${rate === kbps ? 'border-blue-700 bg-blue-50 font-medium' : 'border-gray-300'}`}
+              >
+                {p.label}
+                <span className="block text-[11px] text-gray-500">{formatKbps(kbps)}</span>
+              </button>
+            );
+          })}
+        </div>
+        <input
+          type="range"
+          min={0}
+          max={baseline * 2}
+          step={Math.max(1, Math.round(baseline / 50))}
+          value={draft}
+          onChange={(e) => setDraft(Number(e.target.value))}
+          onPointerUp={() => setRate(draft)}
+          onKeyUp={() => setRate(draft)}
+          className="mt-4 w-full accent-blue-700"
+          aria-label="Demand in kbps"
+        />
+        <div className="flex justify-between text-xs text-gray-500">
+          <span>0</span>
+          <span>
+            {formatKbps(draft)} ({Math.round((draft / baseline) * 100)} % of the limit)
+          </span>
+          <span>{formatKbps(baseline * 2)}</span>
+        </div>
+
+        <div className="mt-4 flex flex-wrap items-center gap-3 text-xs">
+          <span className="text-gray-600">Bytes come from:</span>
+          <label className="flex items-center gap-1">
+            <input type="radio" checked={mode === 'local'} onChange={() => setMode('local')} /> the laptop
+          </label>
+          <label className="flex items-center gap-1">
+            <input type="radio" checked={mode === 'internet'} onChange={() => setMode('internet')} /> the internet (uses the laptop’s internet data)
+          </label>
+        </div>
+        <p className="mt-2 text-xs text-gray-500">
+          {streaming ? `Sending at ${formatKbps(rate)}.` : 'Not sending.'} Received {(received / 1_000_000).toFixed(2)} MB since
+          joining.
+        </p>
+      </section>
+
+      <section className="rounded border border-gray-200 p-4">
+        <h2 className="text-sm font-medium">Last 90 seconds</h2>
+        <Chart data={history} height={160}>
+          <YAxis width={44} tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
+          <Tooltip formatter={(v: number) => formatKbps(v)} />
+          <Line dataKey="demand" name="Asking for" stroke="#b45309" dot={false} isAnimationActive={false} />
+          <Line dataKey="limit" name="Limit" stroke="#6b7280" strokeDasharray="4 3" dot={false} isAnimationActive={false} />
+          <Line dataKey="carried" name="Getting through" stroke="#1d4ed8" strokeWidth={2} dot={false} isAnimationActive={false} />
+        </Chart>
+        <p className="mt-1 text-xs text-gray-500">Orange: asking for · grey dashed: limit · blue: getting through (kbps)</p>
+        <Chart data={history} height={120}>
+          <YAxis width={44} tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
+          <Tooltip formatter={(v: number) => formatMs(v)} />
+          <ReferenceLine y={slice.slaTargets.latencyMs} stroke="#b91c1c" strokeDasharray="4 3" />
+          <Line dataKey="latency" name="Latency p95" stroke="#1d4ed8" dot={false} isAnimationActive={false} connectNulls={false} />
+        </Chart>
+        <p className="mt-1 text-xs text-gray-500">Latency p95 in ms; the red line is the target.</p>
+      </section>
+    </div>
+  );
+}
+
+function Figure({ label, value, note, bad }: { label: string; value: string; note?: string; bad?: boolean }) {
+  return (
+    <div className="rounded border border-gray-200 px-3 py-2">
+      <div className="text-xs text-gray-500">{label}</div>
+      <div className={`text-base font-semibold ${bad ? 'text-red-700' : ''}`}>{value}</div>
+      {note && <div className="text-[11px] text-gray-500">{note}</div>}
+    </div>
+  );
+}
+
+function Chart({ data, height, children }: { data: Point[]; height: number; children: React.ReactNode }) {
+  if (data.length < 2) {
     return (
-      <div className="max-w-4xl mx-auto px-4 py-16 text-center text-slate-400">
-        <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500 mb-4" />
-        <p>Connecting to {device.sliceCode} slice runtime...</p>
+      <div className="grid place-items-center text-xs text-gray-500" style={{ height }}>
+        Collecting measurements…
       </div>
     );
   }
-
-  const slice = snapshot.slice || {
-    code: device?.sliceCode || 'slice',
-    name: 'Network Slice',
-    department: 'Operations',
-    profile: 'eMBB' as const,
-    baselineKbps: 140,
-    floorKbps: 28,
-    burstKbps: 200,
-    currentLimitKbps: 140,
-    slaTargets: { latencyMs: 300, jitterMs: 50, lossPct: 5, minThroughputKbps: 10, availabilityPct: 99.0 },
-    joinCode: 'JOIN',
-  };
-  const stats = snapshot.stats || {
-    code: slice.code,
-    atMs: Date.now(),
-    demandKbps: 0,
-    limitKbps: slice.baselineKbps,
-    usedKbps: 0,
-    droppedKbps: 0,
-    queueMs: 0,
-    latencyP50Ms: null,
-    latencyP95Ms: null,
-    jitterMs: null,
-    lossPct: 0,
-    availabilityPct: null,
-    activeDevices: 1,
-    activeSessions: 0,
-    saturated: false,
-  };
-  const state = snapshot.state || 'NORMAL';
-  const degradationPct = snapshot.degradationPct || 0;
-  const latestDecision = snapshot.latestDecision;
-  const isDegraded = state === 'DEGRADED';
-  const isProtected = state === 'PROTECTED';
-  const baselineKbps = slice.baselineKbps || 140;
-  const maxSliderValue = baselineKbps * 2;
-
-  // Preset ratios: Idle (0), Light (0.3), Normal (0.55), Busy (0.8), Peak (1.0), Flood (2.0)
-  const presets = [
-    { label: 'Idle (0%)', value: 0 },
-    { label: 'Light (30%)', value: Math.round(baselineKbps * 0.3) },
-    { label: 'Normal (55%)', value: Math.round(baselineKbps * 0.55) },
-    { label: 'Busy (80%)', value: Math.round(baselineKbps * 0.8) },
-    { label: 'Peak (100%)', value: baselineKbps },
-    { label: 'Flood (200%)', value: baselineKbps * 2 },
-  ];
-
   return (
-    <div className="max-w-5xl mx-auto px-4 py-6 space-y-6">
-      {/* Top Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-4 bg-slate-800/60 border border-slate-700/60 rounded-2xl p-4 shadow-lg">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-blue-600/20 border border-blue-500/40 flex items-center justify-center font-bold text-blue-400">
-            {slice.profile}
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-xl font-bold text-slate-100">{slice.name}</h1>
-              <span className="text-xs px-2 py-0.5 rounded font-mono bg-slate-900 border border-slate-700 text-blue-400">
-                {slice.joinCode}
-              </span>
-            </div>
-            <div className="flex items-center gap-3 text-xs text-slate-400 mt-0.5">
-              <span>Department: <b className="text-slate-300">{slice.department}</b></span>
-              <span>•</span>
-              <span>Device: <b className="text-slate-300">{device.nickname}</b></span>
-              <span>•</span>
-              <span className="flex items-center gap-1.5">
-                <span className={`w-2 h-2 rounded-full ${wsConnected ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`} />
-                {wsConnected ? 'Realtime WS' : 'Connecting'}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <button
-          type="button"
-          onClick={onLeave}
-          className="px-3.5 py-1.5 bg-slate-700/60 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg text-xs font-semibold transition border border-slate-600/60"
-        >
-          Switch Slice
-        </button>
-      </div>
-
-      {/* Degradation / Protection Banner */}
-      {isDegraded && (
-        <div className="p-4 bg-amber-950/60 border border-amber-600/70 rounded-2xl text-amber-200 shadow-lg flex items-start gap-3">
-          <span className="text-2xl leading-none mt-0.5">⚠️</span>
-          <div>
-            <div className="font-bold text-sm tracking-wide text-amber-300 uppercase">
-              Degraded by CBHA Arbitration (−{degradationPct}%)
-            </div>
-            <div className="text-xs mt-1 text-amber-200/90 leading-relaxed">
-              Link is in contention. Controller lowered this slice limit from <b>{formatKbps(slice.baselineKbps)}</b> to <b>{formatKbps(stats.limitKbps)}</b> (floor: {formatKbps(slice.floorKbps)}).
-              {latestDecision && (
-                <span className="block mt-1 font-mono text-[11px] text-amber-400/90">
-                  Decision #{latestDecision.decisionId}: {latestDecision.reason}
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {isProtected && (
-        <div className="p-4 bg-emerald-950/50 border border-emerald-600/60 rounded-2xl text-emerald-200 shadow-lg flex items-start gap-3">
-          <span className="text-2xl leading-none mt-0.5">🛡️</span>
-          <div>
-            <div className="font-bold text-sm tracking-wide text-emerald-300 uppercase">
-              Protected by CBHA Arbitration (+{formatKbps(stats.limitKbps)})
-            </div>
-            <div className="text-xs mt-1 text-emerald-200/90">
-              High business criticality protected under congestion. Mission-critical SLAs guaranteed.
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Limit & Allocation Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className={`p-4 rounded-xl border ${isDegraded ? 'bg-amber-950/20 border-amber-600/50' : 'bg-slate-800/60 border-slate-700/60'}`}>
-          <span className="text-xs text-slate-400 font-medium block">Current Limit</span>
-          <span className={`text-2xl font-black mt-1 block ${isDegraded ? 'text-amber-400' : 'text-slate-100'}`}>
-            {formatKbps(stats.limitKbps)}
-          </span>
-          <span className="text-[11px] text-slate-500 mt-1 block">
-            Baseline: {formatKbps(slice.baselineKbps)}
-          </span>
-        </div>
-
-        <div className="p-4 rounded-xl border bg-slate-800/60 border-slate-700/60">
-          <span className="text-xs text-slate-400 font-medium block">Carried Load</span>
-          <span className="text-2xl font-black text-emerald-400 mt-1 block">
-            {formatKbps(stats.usedKbps)}
-          </span>
-          <span className="text-[11px] text-slate-500 mt-1 block">
-            Demand: {formatKbps(stats.demandKbps)}
-          </span>
-        </div>
-
-        <div className="p-4 rounded-xl border bg-slate-800/60 border-slate-700/60">
-          <span className="text-xs text-slate-400 font-medium block">Queueing Latency</span>
-          <span className="text-2xl font-black text-purple-400 mt-1 block">
-            {formatMs(stats.queueMs)}
-          </span>
-          <span className="text-[11px] text-slate-500 mt-1 block">
-            RTT P95: {formatMs(stats.latencyP95Ms)}
-          </span>
-        </div>
-
-        <div className="p-4 rounded-xl border bg-slate-800/60 border-slate-700/60">
-          <span className="text-xs text-slate-400 font-medium block">Contractual Floor</span>
-          <span className="text-2xl font-black text-slate-300 mt-1 block">
-            {formatKbps(slice.floorKbps)}
-          </span>
-          <span className="text-[11px] text-slate-500 mt-1 block">
-            Burst Max: {formatKbps(slice.burstKbps)}
-          </span>
-        </div>
-      </div>
-
-      {/* Demand Generation Control Panel */}
-      <div className="bg-slate-800/60 border border-slate-700/60 rounded-2xl p-5 shadow-lg space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-700/60 pb-3">
-          <div>
-            <h2 className="text-base font-bold text-slate-100">Client Traffic Generator</h2>
-            <p className="text-xs text-slate-400 mt-0.5">
-              Generates genuine real-network load against the gateway shaper at <code>/load/down</code>.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-slate-400">Mode:</span>
-            <div className="flex rounded-lg bg-slate-900 border border-slate-700 p-0.5 text-xs">
-              <button
-                type="button"
-                onClick={() => setTrafficMode('local')}
-                className={`px-3 py-1 rounded-md font-semibold transition ${trafficMode === 'local' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}
-              >
-                Local Shaper
-              </button>
-              <button
-                type="button"
-                onClick={() => setTrafficMode('internet')}
-                className={`px-3 py-1 rounded-md font-semibold transition ${trafficMode === 'internet' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}
-              >
-                Internet Proxy
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Presets */}
-        <div>
-          <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
-            Load Presets
-          </label>
-          <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-            {presets.map((p) => {
-              const active = demandRate === p.value;
-              return (
-                <button
-                  key={p.label}
-                  type="button"
-                  onClick={() => setDemandRate(p.value)}
-                  className={`py-2 px-2 text-xs font-semibold rounded-xl border text-center transition ${
-                    active
-                      ? 'bg-blue-600 border-blue-500 text-white shadow-md shadow-blue-900/30 ring-1 ring-blue-400'
-                      : 'bg-slate-900/70 border-slate-700/60 text-slate-300 hover:bg-slate-700/60'
-                  }`}
-                >
-                  <div className="truncate">{p.label}</div>
-                  <div className="text-[10px] text-slate-400 mt-0.5 font-mono">{formatKbps(p.value)}</div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Interactive Slider */}
-        <div className="space-y-2 pt-2">
-          <div className="flex justify-between items-center text-xs">
-            <span className="text-slate-400 font-semibold uppercase tracking-wider">
-              Fine Rate Adjustment:
-            </span>
-            <span className="font-mono text-sm font-bold text-blue-400">
-              {formatKbps(demandRate)} ({Math.round((demandRate / baselineKbps) * 100)}% of baseline)
-            </span>
-          </div>
-
-          <input
-            type="range"
-            min={0}
-            max={maxSliderValue}
-            step={Math.max(1, Math.round(baselineKbps / 100))}
-            value={demandRate}
-            onChange={(e) => setDemandRate(parseInt(e.target.value, 10))}
-            className="w-full h-2 bg-slate-900 rounded-lg appearance-none cursor-pointer accent-blue-500"
-          />
-
-          <div className="flex justify-between text-[11px] text-slate-500 font-mono">
-            <span>0 kbps (Idle)</span>
-            <span>{formatKbps(baselineKbps)} (100% Baseline)</span>
-            <span>{formatKbps(maxSliderValue)} (200% Flood)</span>
-          </div>
-        </div>
-
-        {/* Live Streaming State */}
-        <div className="flex items-center justify-between p-3 rounded-xl bg-slate-900/70 border border-slate-800 text-xs">
-          <div className="flex items-center gap-2">
-            <span className={`w-2.5 h-2.5 rounded-full ${streamingActive ? 'bg-emerald-400 animate-ping' : 'bg-slate-600'}`} />
-            <span className="font-semibold text-slate-200">
-              {streamingActive ? `Streaming real traffic at ${formatKbps(demandRate)}` : 'Load Generator Idle'}
-            </span>
-          </div>
-          <div className="font-mono text-slate-400">
-            Transferred: {(streamBytes / 1024 / 1024).toFixed(2)} MB
-          </div>
-        </div>
-      </div>
-
-      {/* SLA Target Metrics Comparison */}
-      <div className="space-y-2">
-        <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400 px-1">
-          Measured SLA Performance vs Contractual Targets
-        </h2>
-        <SlaStatusGrid snapshot={snapshot} />
-      </div>
-
-      {/* Realtime Graphs */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <ChartErrorBoundary title="Throughput vs Limit">
-          <ThroughputChart data={history} />
-        </ChartErrorBoundary>
-        <ChartErrorBoundary title="Latency & Jitter">
-          <LatencyChart data={history} targetLatencyMs={slice?.slaTargets?.latencyMs ?? 300} />
-        </ChartErrorBoundary>
-      </div>
+    <div style={{ height }} className="mt-2">
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
+          <CartesianGrid stroke="#e5e7eb" vertical={false} />
+          <XAxis dataKey="t" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} minTickGap={30} />
+          {children}
+        </LineChart>
+      </ResponsiveContainer>
     </div>
   );
 }

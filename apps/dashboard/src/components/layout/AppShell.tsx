@@ -37,19 +37,22 @@ interface NavItem {
 
 const NAV_SECTIONS: { heading: string; items: NavItem[] }[] = [
   {
-    heading: 'Real 5G Testbed',
+    heading: 'Testbed',
     items: [
-      { to: '/', label: '5G Slice Testbed', icon: Icons.network },
-      { to: '/slices', label: 'Slice Contracts & Floors', icon: Icons.slices },
-      { to: '/monitoring', label: 'Runtime Monitoring', icon: Icons.monitoring },
-      { to: '/contention', label: 'Contention Events', icon: Icons.contention, indicator: 'contention' },
-      { to: '/arbitration', label: 'Arbitration Decisions', icon: Icons.arbitration },
+      { to: '/', label: 'Slices and devices', icon: Icons.network },
+      { to: '/contention', label: 'Contention', icon: Icons.contention, indicator: 'contention' },
+      { to: '/arbitration', label: 'Decisions', icon: Icons.arbitration },
+      { to: '/monitoring', label: 'Live charts', icon: Icons.monitoring },
+      { to: 'http://localhost:8080/join', label: 'Department page', icon: Icons.slices, external: true },
     ],
   },
   {
-    heading: 'Client Devices',
+    heading: 'Rules',
     items: [
-      { to: 'http://localhost:5174', label: 'Client Slice Portal ↗', icon: Icons.network, external: true },
+      { to: '/slices', label: 'Slice contracts', icon: Icons.slices },
+      { to: '/departments', label: 'Departments', icon: Icons.departments },
+      { to: '/policies', label: 'Business policy', icon: Icons.policy },
+      { to: '/audit', label: 'Audit log', icon: Icons.audit, minRole: 'ADMIN' },
     ],
   },
 ];
@@ -120,10 +123,8 @@ function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
             <Icons.network className="h-5 w-5" />
           </div>
           <div className="min-w-0">
-            <div className="text-sm font-semibold leading-tight text-content">5G Slice Testbed</div>
-            <div className="text-[10px] uppercase tracking-wider text-content-subtle">
-              Real-Network Arbitration
-            </div>
+            <div className="text-sm font-semibold leading-tight text-content">Slice Arbitration</div>
+            <div className="text-xs text-content-subtle">Real-network testbed</div>
           </div>
           <button
             className="ml-auto text-content-muted lg:hidden"
@@ -142,7 +143,7 @@ function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
 
             return (
               <div key={section.heading} className="mb-5">
-                <div className="px-2 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-content-subtle">
+                <div className="px-2 pb-1.5 text-xs font-medium text-content-subtle">
                   {section.heading}
                 </div>
                 <ul className="space-y-0.5">
@@ -153,7 +154,7 @@ function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
                           href={item.to}
                           target="_blank"
                           rel="noreferrer"
-                          className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm text-cyan-400 hover:bg-surface-sunken hover:text-cyan-300 transition-colors font-medium"
+                          className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm text-content-muted hover:bg-surface-sunken hover:text-content transition-colors"
                         >
                           <item.icon className="h-[18px] w-[18px] shrink-0" />
                           <span className="truncate">{item.label}</span>
@@ -176,10 +177,7 @@ function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
                           <span className="truncate">{item.label}</span>
 
                           {item.indicator === 'contention' && contention?.open && (
-                            <span className="ml-auto flex h-2 w-2 shrink-0">
-                              <span className="absolute inline-flex h-2 w-2 animate-ping rounded-full bg-critical opacity-70" />
-                              <span className="relative inline-flex h-2 w-2 rounded-full bg-critical" />
-                            </span>
+                            <span className="ml-auto h-2 w-2 shrink-0 rounded-full bg-critical" aria-label="open" />
                           )}
                         </NavLink>
                       )}
@@ -201,9 +199,7 @@ function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
               <div className="truncate text-xs font-medium text-content">
                 {user?.displayName ?? user?.email}
               </div>
-              <div className="text-[10px] uppercase tracking-wider text-content-subtle">
-                {user?.role}
-              </div>
+              <div className="text-xs capitalize text-content-subtle">{user?.role?.toLowerCase()}</div>
             </div>
             <Tooltip content="Sign out">
               <button
@@ -277,7 +273,7 @@ function TopBar({
             }
           >
             <Badge style={levelStyle} dot pulse={state.oversubscribed}>
-              {state.level.replace('_', ' ')}
+              {state.level.charAt(0) + state.level.slice(1).toLowerCase().replace('_', ' ')}
               <span className="ml-1 tabular opacity-80">
                 {(state.demandRatio * 100).toFixed(0)}%
               </span>

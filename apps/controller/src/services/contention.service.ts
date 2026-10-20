@@ -239,8 +239,8 @@ export class ContentionService {
       action: AuditAction.CONTENTION_DETECTED,
       actor: SYSTEM_ACTOR,
       summary:
-        `Contention detected: demand ${round(capacity.demandMbps)} Mbps against ` +
-        `${round(capacity.offeredCapacityMbps)} Mbps offered ` +
+        `Contention detected: demand ${round(capacity.demandMbps)} kbps against ` +
+        `${round(capacity.offeredCapacityMbps)} kbps offered ` +
         `(${round(capacity.demandRatio * 100, 1)}% of capacity, ${event.severity})`,
       target: { type: 'ContentionEvent', id: event.id },
       metadata: {

@@ -10,7 +10,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
  */
 export type ThemePreference = 'light' | 'dark' | 'system';
 
-const STORAGE_KEY = 'arbitration.theme';
+const STORAGE_KEY = 'testbed.theme';
 
 interface ThemeState {
   preference: ThemePreference;
@@ -29,7 +29,7 @@ function readStored(): ThemePreference {
   } catch {
     /* private mode */
   }
-  return 'dark';
+  return 'light';
 }
 
 function resolve(preference: ThemePreference): 'light' | 'dark' {

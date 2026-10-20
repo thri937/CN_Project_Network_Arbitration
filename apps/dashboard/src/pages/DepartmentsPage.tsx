@@ -53,13 +53,13 @@ export function DepartmentsPage(): JSX.Element {
     <div className="space-y-6">
       <PageHeader
         title="Departments"
-        description="Business context for arbitration. Every field here is an input to the priority score or a hard constraint on degradation."
+        description="The business facts behind every decision: criticality, cost of an outage, compliance, customer impact and recovery tolerance."
       />
 
       <Card>
         <CardHeader
           title="Arbitration attributes"
-          subtitle="Hover any column heading to see how the engine uses it"
+          subtitle="Hover a column heading to see how the engine uses it"
         />
         {!summaries || summaries.length === 0 ? (
           <EmptyState

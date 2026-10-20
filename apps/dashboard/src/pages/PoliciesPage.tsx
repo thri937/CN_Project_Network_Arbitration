@@ -42,8 +42,8 @@ export function PoliciesPage(): JSX.Element {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Business Policies"
-        description="How department attributes are weighed against one another. Changing this changes every future arbitration outcome."
+        title="Business policy"
+        description="How much each business fact counts in a department’s priority score, and the engine’s tuning. Changes apply to future decisions only."
       />
 
       <div className="grid gap-6 lg:grid-cols-3">
@@ -116,8 +116,8 @@ export function PoliciesPage(): JSX.Element {
       {/* ---- Ordinal translation ---- */}
       <Card>
         <CardHeader
-          title="Ordinal to cardinal translation"
-          subtitle="Business stakeholders reason in categories; the mathematics needs numbers. This is the auditable translation point."
+          title="Category scores"
+          subtitle="The number each category becomes in the score"
         />
         <CardBody className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
           <ScoreTable title="Criticality" scores={effective.criticalityScore} />
@@ -135,8 +135,8 @@ export function PoliciesPage(): JSX.Element {
       {/* ---- Harm curvature ---- */}
       <Card>
         <CardHeader
-          title="Recovery tolerance → harm shape"
-          subtitle="The parameter that makes this algorithm spread cuts rather than sort and gut"
+          title="Recovery tolerance and harm curve"
+          subtitle="A steeper curve (higher γ) makes deep cuts much more costly, so the engine spreads cuts across slices"
         />
         <CardBody>
           <Table>
@@ -176,7 +176,7 @@ export function PoliciesPage(): JSX.Element {
         <Card>
           <CardHeader
             title="Revision history"
-            subtitle="An active policy is never edited in place — editing forks a new draft revision"
+            subtitle="An active policy is never edited in place; editing creates a new draft revision"
           />
           <Table>
             <thead>
