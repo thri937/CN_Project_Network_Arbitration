@@ -36,9 +36,11 @@ export class ErrorBoundary extends Component<Props, State> {
             ⚠️
           </div>
           <h1 className="text-xl font-bold text-slate-100 mb-2">Portal Display Error</h1>
-          <p className="text-slate-400 text-sm max-w-md mb-4">
-            {this.state.error?.message || 'An unexpected rendering error occurred while displaying slice metrics.'}
-          </p>
+          <div className="bg-red-950/40 border border-red-800/60 rounded-xl p-3 mb-4 max-w-md text-left">
+            <div className="text-xs font-mono text-red-300 break-words">
+              {this.state.error?.name || 'Error'}: {this.state.error?.message || 'Rendering error'}
+            </div>
+          </div>
           <div className="flex gap-3">
             <button
               onClick={() => window.location.reload()}

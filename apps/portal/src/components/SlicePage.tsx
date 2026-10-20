@@ -4,6 +4,7 @@ import { formatKbps, formatMs } from '../utils/format';
 import { ThroughputChart } from './ThroughputChart';
 import { LatencyChart } from './LatencyChart';
 import { SlaStatusGrid } from './SlaStatusGrid';
+import { ChartErrorBoundary } from './ChartErrorBoundary';
 
 interface Props {
   device: BoundDevice;
@@ -239,19 +240,51 @@ export function SlicePage({ device, onLeave }: Props) {
     );
   }
 
-  const { slice, stats, state, degradationPct, latestDecision } = snapshot;
+  const slice = snapshot.slice || {
+    code: device?.sliceCode || 'slice',
+    name: 'Network Slice',
+    department: 'Operations',
+    profile: 'eMBB' as const,
+    baselineKbps: 140,
+    floorKbps: 28,
+    burstKbps: 200,
+    currentLimitKbps: 140,
+    slaTargets: { latencyMs: 300, jitterMs: 50, lossPct: 5, minThroughputKbps: 10, availabilityPct: 99.0 },
+    joinCode: 'JOIN',
+  };
+  const stats = snapshot.stats || {
+    code: slice.code,
+    atMs: Date.now(),
+    demandKbps: 0,
+    limitKbps: slice.baselineKbps,
+    usedKbps: 0,
+    droppedKbps: 0,
+    queueMs: 0,
+    latencyP50Ms: null,
+    latencyP95Ms: null,
+    jitterMs: null,
+    lossPct: 0,
+    availabilityPct: null,
+    activeDevices: 1,
+    activeSessions: 0,
+    saturated: false,
+  };
+  const state = snapshot.state || 'NORMAL';
+  const degradationPct = snapshot.degradationPct || 0;
+  const latestDecision = snapshot.latestDecision;
   const isDegraded = state === 'DEGRADED';
   const isProtected = state === 'PROTECTED';
-  const maxSliderValue = slice.baselineKbps * 2;
+  const baselineKbps = slice.baselineKbps || 140;
+  const maxSliderValue = baselineKbps * 2;
 
   // Preset ratios: Idle (0), Light (0.3), Normal (0.55), Busy (0.8), Peak (1.0), Flood (2.0)
   const presets = [
     { label: 'Idle (0%)', value: 0 },
-    { label: 'Light (30%)', value: Math.round(slice.baselineKbps * 0.3) },
-    { label: 'Normal (55%)', value: Math.round(slice.baselineKbps * 0.55) },
-    { label: 'Busy (80%)', value: Math.round(slice.baselineKbps * 0.8) },
-    { label: 'Peak (100%)', value: slice.baselineKbps },
-    { label: 'Flood (200%)', value: slice.baselineKbps * 2 },
+    { label: 'Light (30%)', value: Math.round(baselineKbps * 0.3) },
+    { label: 'Normal (55%)', value: Math.round(baselineKbps * 0.55) },
+    { label: 'Busy (80%)', value: Math.round(baselineKbps * 0.8) },
+    { label: 'Peak (100%)', value: baselineKbps },
+    { label: 'Flood (200%)', value: baselineKbps * 2 },
   ];
 
   return (
@@ -433,7 +466,7 @@ export function SlicePage({ device, onLeave }: Props) {
               Fine Rate Adjustment:
             </span>
             <span className="font-mono text-sm font-bold text-blue-400">
-              {formatKbps(demandRate)} ({Math.round((demandRate / slice.baselineKbps) * 100)}% of baseline)
+              {formatKbps(demandRate)} ({Math.round((demandRate / baselineKbps) * 100)}% of baseline)
             </span>
           </div>
 
@@ -441,7 +474,7 @@ export function SlicePage({ device, onLeave }: Props) {
             type="range"
             min={0}
             max={maxSliderValue}
-            step={Math.max(1, Math.round(slice.baselineKbps / 100))}
+            step={Math.max(1, Math.round(baselineKbps / 100))}
             value={demandRate}
             onChange={(e) => setDemandRate(parseInt(e.target.value, 10))}
             className="w-full h-2 bg-slate-900 rounded-lg appearance-none cursor-pointer accent-blue-500"
@@ -449,7 +482,7 @@ export function SlicePage({ device, onLeave }: Props) {
 
           <div className="flex justify-between text-[11px] text-slate-500 font-mono">
             <span>0 kbps (Idle)</span>
-            <span>{formatKbps(slice.baselineKbps)} (100% Baseline)</span>
+            <span>{formatKbps(baselineKbps)} (100% Baseline)</span>
             <span>{formatKbps(maxSliderValue)} (200% Flood)</span>
           </div>
         </div>
@@ -478,8 +511,12 @@ export function SlicePage({ device, onLeave }: Props) {
 
       {/* Realtime Graphs */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <ThroughputChart data={history} />
-        <LatencyChart data={history} targetLatencyMs={slice?.slaTargets?.latencyMs ?? 300} />
+        <ChartErrorBoundary title="Throughput vs Limit">
+          <ThroughputChart data={history} />
+        </ChartErrorBoundary>
+        <ChartErrorBoundary title="Latency & Jitter">
+          <LatencyChart data={history} targetLatencyMs={slice?.slaTargets?.latencyMs ?? 300} />
+        </ChartErrorBoundary>
       </div>
     </div>
   );

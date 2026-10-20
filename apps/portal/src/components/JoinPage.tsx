@@ -67,7 +67,17 @@ export function JoinPage({ onJoined }: Props) {
       }
 
       localStorage.setItem('cn_device_nickname', nickname.trim());
-      onJoined(body as BoundDevice);
+      const bound: BoundDevice = {
+        deviceId: body.deviceId,
+        sliceCode: body.slice?.code || code.trim(),
+        nickname: nickname.trim() || 'Client Device',
+        sourceIp: '127.0.0.1',
+        lastSeenMs: Date.now(),
+        activeRateKbps: 0,
+        mode: 'local',
+        operatorControlEnabled: true,
+      };
+      onJoined(bound);
     } catch (err: any) {
       setError(err.message);
     } finally {
