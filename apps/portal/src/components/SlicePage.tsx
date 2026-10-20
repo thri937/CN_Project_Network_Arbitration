@@ -21,6 +21,7 @@ export function SlicePage({ device, onLeave }: Props) {
   const [streamBytes, setStreamBytes] = useState(0);
 
   const abortControllerRef = useRef<AbortController | null>(null);
+  const initializedRef = useRef<boolean>(false);
   const probeSeqRef = useRef<number>(1);
   const probeBufferRef = useRef<Array<{ seq: number; sentAtMs: number; recvAtMs: number; rttMs: number }>>([]);
 
@@ -31,8 +32,9 @@ export function SlicePage({ device, onLeave }: Props) {
       if (res.ok) {
         const data: SliceSnapshot = await res.json();
         setSnapshot(data);
-        if (demandRate === 0 && data.slice) {
-          // Initialize slider to normal (55% of baseline)
+        if (!initializedRef.current && data.slice) {
+          initializedRef.current = true;
+          // Initialize slider to normal (55% of baseline) only once on mount
           setDemandRate(Math.round(data.slice.baselineKbps * 0.55));
         }
       } else if (res.status === 404 || res.status === 403) {
@@ -42,7 +44,7 @@ export function SlicePage({ device, onLeave }: Props) {
     } catch {
       // ignore
     }
-  }, [device.deviceId, demandRate, onLeave]);
+  }, [device.deviceId, onLeave]);
 
   // Connect WebSocket for live 1-second snapshots & operator override
   useEffect(() => {
