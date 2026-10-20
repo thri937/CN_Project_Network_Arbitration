@@ -250,13 +250,16 @@ export class PortalServer {
 
     // Determine health
     let health: HealthStatus = 'HEALTHY';
+    const targetLatency = sliceItem.slaTargets?.latencyMs ?? 300;
+    const targetLoss = sliceItem.slaTargets?.lossPct ?? 5;
+
     if (stats.latencyP95Ms === null) {
       health = 'UNKNOWN';
     } else if (
-      stats.latencyP95Ms > sliceItem.slaTargets.latencyMs ||
-      stats.lossPct > sliceItem.slaTargets.lossPct
+      stats.latencyP95Ms > targetLatency ||
+      stats.lossPct > targetLoss
     ) {
-      health = stats.lossPct > sliceItem.slaTargets.lossPct * 2 ? 'CRITICAL' : 'VIOLATING';
+      health = stats.lossPct > targetLoss * 2 ? 'CRITICAL' : 'VIOLATING';
     } else if (state === 'DEGRADED') {
       health = 'DEGRADED';
     }

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import type { BoundDevice } from './types';
 import { JoinPage } from './components/JoinPage';
 import { SlicePage } from './components/SlicePage';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 // The bound device lives in sessionStorage, which is separate for every tab, so several tabs on
 // one laptop can each join a different slice. The nickname stays in localStorage as a convenience.
@@ -62,11 +63,13 @@ export default function App() {
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col justify-between">
       <main className="flex-1">
-        {device ? (
-          <SlicePage device={device} onLeave={handleLeave} />
-        ) : (
-          <JoinPage onJoined={handleJoined} />
-        )}
+        <ErrorBoundary>
+          {device ? (
+            <SlicePage device={device} onLeave={handleLeave} />
+          ) : (
+            <JoinPage onJoined={handleJoined} />
+          )}
+        </ErrorBoundary>
       </main>
 
       <footer className="py-4 text-center text-xs text-slate-500 border-t border-slate-800">

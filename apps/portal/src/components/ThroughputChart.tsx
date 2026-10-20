@@ -14,13 +14,22 @@ interface Props {
 }
 
 export function ThroughputChart({ data }: Props) {
+  if (!data || data.length === 0) {
+    return (
+      <div className="w-full h-64 bg-slate-800/60 rounded-xl p-3 border border-slate-700/60 flex flex-col items-center justify-center text-slate-500 text-xs">
+        <span className="mb-1 text-base">📊</span>
+        <span>Awaiting realtime throughput samples...</span>
+      </div>
+    );
+  }
+
   return (
     <div className="w-full h-64 bg-slate-800/60 rounded-xl p-3 border border-slate-700/60 flex flex-col">
       <div className="flex justify-between items-center mb-2 px-1">
         <h3 className="text-sm font-semibold text-slate-200">Throughput vs Limit</h3>
         <span className="text-xs text-slate-400">Past 60 seconds (kbps)</span>
       </div>
-      <div className="flex-1 w-full min-h-0">
+      <div className="flex-1 w-full min-h-[180px]">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={data} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
             <defs>
