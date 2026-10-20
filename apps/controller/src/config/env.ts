@@ -5,7 +5,7 @@ import { z } from 'zod';
 
 // Load environment configuration from root .env or package/cwd paths (except during test runs)
 if (process.env.NODE_ENV !== 'test') {
-  dotenv.config({ path: path.resolve(__dirname, '../../../.env'), override: true });
+  dotenv.config({ path: path.resolve(__dirname, '../../../../.env'), override: true });
   dotenv.config({ path: path.resolve(__dirname, '../../.env') });
   dotenv.config();
 }
@@ -121,7 +121,7 @@ const schema = z.object({
   /* ---- Network model ----------------------------------------------- */
   BANDWIDTH_UNIT: z.string().default('kbps'),
   GATEWAY_URL: z.string().default('http://127.0.0.1:9090'),
-  GATEWAY_TOKEN: z.string().default('change-me-long-random'),
+  GATEWAY_TOKEN: z.string().default('change-me-long-random-gateway-token-sec-2026'),
   /** Total transport capacity of the modelled enterprise core, in Mbps. */
   NETWORK_TOTAL_CAPACITY_MBPS: z.coerce.number().positive().default(10_000),
   /** Capacity reserved for signalling/OAM and never offered to slices. */
