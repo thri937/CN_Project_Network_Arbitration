@@ -214,7 +214,7 @@ export function TestbedPage() {
               {formatBandwidth(capData?.admission?.offeredCapacityMbps ?? 950, bandwidthUnit)} offered
             </div>
             <div className="text-xs text-text-muted mt-1">
-              Total: {formatBandwidth(1000, bandwidthUnit)} (50 {bandwidthUnit} reserved)
+              Total: 1,000 {bandwidthUnit} (1.00 Mbps) &mdash; 50 {bandwidthUnit} reserved
             </div>
           </CardBody>
         </Card>

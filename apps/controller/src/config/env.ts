@@ -3,10 +3,10 @@ import path from 'node:path';
 import dotenv from 'dotenv';
 import { z } from 'zod';
 
-// Load environment configuration from current working directory or package/root paths
-dotenv.config();
+// Load environment configuration from root .env or package/cwd paths
+dotenv.config({ path: path.resolve(__dirname, '../../../.env'), override: true });
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
-dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
+dotenv.config();
 
 /**
  * Environment configuration.
