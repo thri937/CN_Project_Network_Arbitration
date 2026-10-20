@@ -8,10 +8,22 @@ import type { INetworkTelemetryPort } from '@/interfaces/telemetry.port';
 import type { SliceRepository } from '@/repositories/slice.repository';
 import type { TelemetryService } from '@/services/telemetry.service';
 import type { AuditService } from '@/services/audit.service';
+import type { ContentionService } from '@/services/contention.service';
+import { GatewayTelemetryAdapter } from '@/telemetry/adapters/gateway.telemetry.adapter';
+import { ExperimentRecorder } from '@/testbed/experimentRecorder';
 import { asyncHandler } from '@/utils/asyncHandler';
 import { ok } from '@/utils/http';
 import { NotFoundError, ValidationError } from '@/utils/errors';
 import { createLogger } from '@/utils/logger';
+
+const VIRTUAL_ADAPTER = /vethernet|virtualbox|vmware|hyper-v|wsl|loopback|bluetooth|tailscale|zerotier/i;
+
+function interfaceRank(name: string, ip: string): number {
+  if (ip.startsWith('192.168.137.') || /hotspot/i.test(name)) return 0;
+  if (VIRTUAL_ADAPTER.test(name) || ip.startsWith('192.168.56.')) return 3;
+  if (/wi-?fi|wlan|wireless/i.test(name)) return 1;
+  return 2;
+}
 
 const log = createLogger('testbed-controller');
 
@@ -30,6 +42,7 @@ export interface TestbedControllerDeps {
   slices: SliceRepository;
   telemetryService: TelemetryService;
   auditService: AuditService;
+  contention: ContentionService;
 }
 
 export function createTestbedController(deps: TestbedControllerDeps) {
@@ -41,51 +54,30 @@ export function createTestbedController(deps: TestbedControllerDeps) {
   let activeExperiment: {
     record: ExperimentRecord;
     stream: fs.WriteStream;
+    recorder: ExperimentRecorder;
   } | null = null;
 
-  // Hook into telemetry samples to record active experiment rows
-  const recordTelemetryRow = (telemetryData: any) => {
-    if (!activeExperiment) return;
-
-    const t = Date.now();
-    const arbOn = deps.autoArbitration.enabled;
-    const contentionState = 'ACTIVE';
-
-    for (const slice of telemetryData) {
-      const row = [
-        t,
-        activeExperiment.record.name,
-        arbOn,
-        slice.sliceId || slice.code,
-        slice.demandMbps,
-        slice.allocatedMbps,
-        slice.usedMbps,
-        slice.extra?.droppedKbps ?? 0,
-        slice.extra?.queueMs ?? 0,
-        slice.extra?.p50Ms ?? slice.latencyMs,
-        slice.latencyMs,
-        slice.jitterMs,
-        slice.packetLossPercent,
-        slice.extra?.availabilityPct ?? 100,
-        slice.extra?.activeDevices ?? 0,
-        contentionState,
-        slice.extra?.decisionId ?? '',
-      ].join(',');
-
-      activeExperiment.stream.write(row + '\n');
-      activeExperiment.record.rowCount++;
-    }
+  /** Context written on every row: the arbitration switch and the open contention, if any. */
+  const rowContext = (scenario: string) => () => {
+    const open = deps.contention.getOpenEvent();
+    return {
+      scenario,
+      arbitrationOn: deps.autoArbitration.enabled,
+      contentionState: open?.status ?? 'NONE',
+      decisionId: open?.decisionIds[open.decisionIds.length - 1] ?? '',
+    };
   };
 
-  setInterval(async () => {
+  // Poll faster than the gateway's 2 s window; the recorder writes each window exactly once.
+  setInterval(() => {
     if (!activeExperiment) return;
-    try {
-      const live = deps.telemetryService.getSnapshot();
-      if (live && live.slices) {
-        recordTelemetryRow(live.slices);
-      }
-    } catch {}
-  }, 1000);
+    activeExperiment.recorder
+      .poll()
+      .then((rows) => {
+        if (activeExperiment) activeExperiment.record.rowCount += rows;
+      })
+      .catch(() => undefined);
+  }, 500).unref();
 
   return {
     /** GET /api/v1/testbed/status */
@@ -104,15 +96,24 @@ export function createTestbedController(deps: TestbedControllerDeps) {
 
       // Discover LAN IPs
       const nets = os.networkInterfaces();
-      const lanIps: { interface: string; ip: string; isHotspot: boolean }[] = [];
+      const lanIps: { interface: string; ip: string; isHotspot: boolean; virtual: boolean }[] = [];
       for (const name of Object.keys(nets)) {
         for (const net of nets[name] || []) {
           if (net.family === 'IPv4' && !net.internal && !net.address.startsWith('169.254.')) {
             const isHotspot = net.address.startsWith('192.168.137.') || name.toLowerCase().includes('hotspot');
-            lanIps.push({ interface: name, ip: net.address, isHotspot });
+            lanIps.push({
+              interface: name,
+              ip: net.address,
+              isHotspot,
+              virtual: interfaceRank(name, net.address) === 3,
+            });
           }
         }
       }
+
+      // Hotspot first, then Wi-Fi, then Ethernet; virtual adapters last — the dashboard's QR
+      // codes use the first entry by default.
+      lanIps.sort((a, b) => interfaceRank(a.interface, a.ip) - interfaceRank(b.interface, b.ip));
 
       ok(req, res, {
         gatewayOk,
@@ -308,9 +309,17 @@ export function createTestbedController(deps: TestbedControllerDeps) {
       const fileName = `${Date.now()}-${name.replace(/[^a-zA-Z0-9_-]/g, '_')}.csv`;
       const filePath = path.join(experimentsDir, fileName);
 
+      // Experiments record the gateway's own measurements, so they need the gateway provider.
+      const provider = deps.telemetryProvider;
+      if (!(provider instanceof GatewayTelemetryAdapter)) {
+        throw new ValidationError('Experiments need TELEMETRY_PROVIDER=gateway', []);
+      }
+
       const stream = fs.createWriteStream(filePath, { flags: 'a' });
-      stream.write(
-        't_ms,scenario,arbitration_on,slice,demand_kbps,limit_kbps,used_kbps,dropped_kbps,queue_ms,latency_p50_ms,latency_p95_ms,jitter_ms,loss_pct,availability_pct,devices,contention_state,decision_id\n'
+      const recorder = new ExperimentRecorder(
+        () => provider.readStats(),
+        rowContext(name),
+        (line) => stream.write(line),
       );
 
       activeExperiment = {
@@ -322,6 +331,7 @@ export function createTestbedController(deps: TestbedControllerDeps) {
           rowCount: 0,
         },
         stream,
+        recorder,
       };
 
       ok(req, res, activeExperiment.record);

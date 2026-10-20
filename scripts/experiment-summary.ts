@@ -30,11 +30,14 @@ export function analyzeExperimentCsv(filePath: string): string {
     return obj;
   });
 
-  // Group by (arbitration_on, slice)
+  // Group by (scenario, arbitration_on, slice). Grouping by the arbitration switch alone would mix
+  // different loads (every scenario run with arbitration ON) into one row and compare apples
+  // with oranges. Label your recording (the experiment name) per scenario for an A/B table.
   type GroupKey = string;
   const groups: Record<
     GroupKey,
     {
+      scenario: string;
       arbitrationOn: string;
       slice: string;
       latencies: number[];
@@ -48,9 +51,11 @@ export function analyzeExperimentCsv(filePath: string): string {
   for (const r of rows) {
     const arb = r.arbitration_on === 'true' || r.arbitration_on === '1' ? 'ON' : 'OFF';
     const slice = r.slice || 'unknown';
-    const key = `${arb}__${slice}`;
+    const scenario = r.scenario || '';
+    const key = `${scenario}__${arb}__${slice}`;
     if (!groups[key]) {
       groups[key] = {
+        scenario,
         arbitrationOn: arb,
         slice,
         latencies: [],
@@ -79,8 +84,8 @@ export function analyzeExperimentCsv(filePath: string): string {
 
   let md = `# Experiment Summary: ${path.basename(filePath)}\n\n`;
   md += `Total Data Points: ${rows.length}\n\n`;
-  md += `| Arbitration | Slice | Mean Latency (ms) | p95 Latency (ms) | Mean Loss (%) | Mean Demand (kbps) | Mean Used (kbps) | Used / Limit Ratio |\n`;
-  md += `|---|---|---:|---:|---:|---:|---:|---:|\n`;
+  md += `| Scenario | Arbitration | Slice | Mean Latency (ms) | p95 Latency (ms) | Mean Loss (%) | Mean Demand (kbps) | Mean Used (kbps) | Used / Limit Ratio |\n`;
+  md += `|---|---|---|---:|---:|---:|---:|---:|---:|\n`;
 
   for (const g of Object.values(groups)) {
     const meanLat = mean(g.latencies).toFixed(1);
@@ -91,7 +96,7 @@ export function analyzeExperimentCsv(filePath: string): string {
     const meanLimit = mean(g.limits);
     const ratio = meanLimit > 0 ? (mean(g.useds) / meanLimit).toFixed(2) : '—';
 
-    md += `| ${g.arbitrationOn} | ${g.slice} | ${meanLat} | ${p95Lat} | ${meanLoss}% | ${meanDemand} | ${meanUsed} | ${ratio} |\n`;
+    md += `| ${g.scenario} | ${g.arbitrationOn} | ${g.slice} | ${meanLat} | ${p95Lat} | ${meanLoss}% | ${meanDemand} | ${meanUsed} | ${ratio} |\n`;
   }
 
   return md;

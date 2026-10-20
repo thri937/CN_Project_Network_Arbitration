@@ -1,188 +1,240 @@
-# 5G CBHA Runtime Arbitration — Real-Network Testbed
+# Real-Network Slice Arbitration Testbed
 
-A production-grade real-network testbed that ports the **Context-Based Harm Arbitration (CBHA)** enterprise network slicing engine onto a physical Windows 11 Wi-Fi hotspot environment with real traffic shaping, live client devices, active telemetry probes, and dynamic business-harm arbitration.
+**Who should slow down when the network is full?** This project answers that question on a
+**real network** built from one laptop and the phones connected to it.
+
+A company network is split into **slices**, one per department. When everyone wants more
+bandwidth than the link can carry, something has to give. A normal network decides using the
+**QoS label** someone attached years ago. This project decides using **business value**: what an
+outage costs per minute, compliance (life-safety, regulated), how critical the department is, and
+how long it can tolerate being slowed. It enforces that decision on live traffic and explains
+every decision in plain English.
+
+It is the real-network version of the simulated project in `D:\CN project\CN project\CN`. **The
+business rules and the arbitration engine are copied unchanged.** Only the network is new: the
+simulator is replaced by a real traffic gateway.
 
 ---
 
-## 1. Overview
-
-In multi-department enterprises, physical network infrastructure is sliced into logical sub-networks (slices). When unexpected traffic spikes saturate the bottleneck link, traditional network devices drop packets arbitrarily or rely solely on static QoS class identifiers (5QI / DSCP). 
-
-**CBHA (Context-Based Harm Arbitration)** replaces static QoS with **business value arbitration**:
-- Decisions are driven by **business criticality**, **cost of downtime (£/min)**, **recovery tolerance**, **regulatory compliance**, and **customer impact**.
-- When congestion occurs, non-critical slices (e.g. Canteen Signage) are throttled down towards their contractual floors, preserving low latency and zero packet loss for life-critical services (e.g. Patient Telemetry) and mission-critical manufacturing (e.g. Factory Automation).
-- **Every decision is audited and explained in plain English** on operator dashboards and department client portals.
+## The picture
 
 ```
-                    ISP Wi-Fi (Internet)
-                           │
-            ┌──────────────┴──────────────────────────────────────────────┐
-            │ MAIN LAPTOP (Windows 11, Mobile Hotspot 192.168.137.1)      │
-            │                                                             │
-            │  ┌────────────────────┐ southbound REST ┌─────────────────┐ │
-            │  │ CONTROLLER :4000   │ 127.0.0.1:9090  │ SLICE GATEWAY   │ │
-            │  │ (CBHA Engine)      │ ──────────────▶ │  :8080 portal + │ │
-            │  │ contention → CBHA  │  limits, stats  │        load +   │ │
-            │  │ → 2-phase apply    │ ◀────────────── │        probes   │ │
-            │  │ audit, Socket.IO   │                 │  :8888 proxy    │ │
-            │  └─────────┬──────────┘                 │  Token Bucket   │ │
-            │            │                            │  Rate Limiter   │ │
-            │   DASHBOARD :5173 / :4000               │  Root: 950 kbps │ │
-            │   Interactive Topology Map              └────────┬────────┘ │
-            └──────────────────────────────────────────────────┼──────────┘
-                                         hotspot Wi-Fi (real)  │
-          ┌───────────┬───────────┬───────────┬────────────────┼───────┬───────────┐
-       Clinic      Factory    Quality lab  Warehouse      Security  Office IT    Canteen
-       phone       phone       laptop       phone          phone     laptop       phone
-      (portal)    (portal)    (portal/agent)(portal)      (portal)  (portal)     (portal)
+                     Home Wi-Fi / ISP
+                            │
+   ┌────────────────────────┴───────────────────────────────────────────┐
+   │ MAIN LAPTOP  (Windows Mobile Hotspot, usually 192.168.137.1)        │
+   │                                                                     │
+   │   CONTROLLER :4000  ── reads stats / sets limits ──►  SLICE GATEWAY │
+   │   the "brain": detects        127.0.0.1:9090          the "network":│
+   │   contention, decides                                 per-slice     │
+   │   who is cut, audits                                  limits + one  │
+   │                                                       1 Mbps link   │
+   │   DASHBOARD :5173 (operator)                          :8080 portal  │
+   └──────────────────────────────────────────────────────────┬──────────┘
+                                         real hotspot Wi-Fi    │
+     Clinic   Factory   Quality lab   Warehouse   Security   Office IT   Canteen
+     phone    phone     laptop        phone       phone      laptop      phone
+      └── each device opens the portal, joins its department's slice, and creates real load
 ```
 
----
-
-## 2. The 7 Departments and Slices
-
-All bandwidth numbers are scaled for a **1 Mbps total bottleneck link** (950 kbps offered capacity, 50 kbps reserved for out-of-band management) with a scaling factor of $s = 0.1$:
-
-| # | Department | Slice Name | Criticality | Importance | Downtime Cost | Recovery Tol. | Max Degr. | Baseline | Floor | Max Burst | Profile | S-NSSAI |
-|---|---|---|---|---:|---:|---|---:|---:|---:|---:|---|---|
-| 1 | **Clinic** | Patient Telemetry | `MISSION_CRITICAL` | 100 | £25,000 / min | `ZERO` | **0% (Exempt)** | 60 kbps | 40 kbps | 90 kbps | URLLC | 2 / 000101 |
-| 2 | **Factory** | Factory Automation | `MISSION_CRITICAL` | 94 | £8,400 / min | `LOW` | 15% | 380 kbps | 170 kbps | 580 kbps | URLLC | 2 / 000201 |
-| 3 | **Quality lab** | Lab Instrumentation | `BUSINESS_CRITICAL` | 68 | £1,600 / min | `LOW` | 20% | 180 kbps | 50 kbps | 260 kbps | eMBB | 1 / 000401 |
-| 4 | **Warehouse** | Warehouse Operations | `BUSINESS_CRITICAL` | 72 | £2,100 / min | `MODERATE` | 35% | 160 kbps | 55 kbps | 250 kbps | URLLC | 2 / 000301 |
-| 5 | **Security** | CCTV | `BUSINESS_OPERATIONAL` | 58 | £700 / min | `MODERATE` | 40% | 240 kbps | 60 kbps | 360 kbps | eMBB | 1 / 000601 |
-| 6 | **Office IT** | Office Wi-Fi | `BUSINESS_OPERATIONAL` | 52 | £900 / min | `MODERATE` | 45% | 320 kbps | 70 kbps | 500 kbps | eMBB | 1 / 000501 |
-| 7 | **Canteen** | Canteen Signage | `BEST_EFFORT` | 8 | £15 / min | `HIGH` | 80% | 140 kbps | 28 kbps | 200 kbps | URLLC | 2 / 000701 |
-|   | **Total** | | | | | | | **1,480 kbps** | **473 kbps** | 2,240 kbps | | |
-
-> **Key Architectural Insight:**
-> Notice that **Canteen Signage** is tagged with the 3GPP profile `URLLC`, but carries near-zero financial loss (£15/min), while **Lab Instrumentation** is tagged `eMBB` but is legally regulated (£1,600/min). Traditional QoS would prioritize Canteen over Lab because of the URLLC label; **CBHA prioritizes by business impact**, ensuring the right service survives.
+- **Gateway** (`apps/gateway`): carries the traffic. Each slice gets its own speed limit, and all
+  slices share one **1 Mbps** link (950 kbps offered, 50 kbps reserved). It measures throughput,
+  delay, loss and availability every 2 s.
+- **Controller** (`apps/controller`): reads those measurements. When demand exceeds the link, it
+  decides how much traffic must be shed and from whom, then sets new limits on the gateway.
+- **Portal** (`apps/portal`): the website on each department's phone. You pick how much traffic
+  to send and watch your slice live.
+- **Dashboard** (`apps/dashboard`): the operator's view, with topology, QR join codes, every
+  decision with its reasons, the arbitration on/off switch and an experiment recorder.
 
 ---
 
-## 3. Quick Start (10-Minute Setup)
+## The 7 departments and slices
 
-### Prerequisites
-- Windows 11 Laptop with Wi-Fi adapter.
-- Node.js 20+ or 24+ installed.
-- PowerShell 5.1+ or 7+.
+Bandwidth is the simulated project's value divided by 10,000 (10 Gbps becomes 1 Mbps). Every
+business rule is the same.
 
-### Step 1: Install & Setup
-```powershell
-# Clone or open the repository
-cd 'D:\CN project\CN project\CN_Real_Network_arbitration'
+| Department | Slice | QoS label | Cost of outage | Max cut | Baseline | Floor | Join code |
+|---|---|---|---:|---:|---:|---:|---|
+| Clinic | Patient Telemetry | URLLC | £25,000/min | **0 %** (life-safety) | 60 kbps | 40 kbps | `CLN101` |
+| Factory | Factory Automation | URLLC | £8,400/min | 15 % | 380 kbps | 170 kbps | `FAC201` |
+| Quality lab | Lab Instrumentation | eMBB | £1,600/min | 20 % (regulated) | 180 kbps | 50 kbps | `LAB401` |
+| Warehouse | Warehouse Operations | URLLC | £2,100/min | 35 % | 160 kbps | 55 kbps | `WHS301` |
+| Security | CCTV | eMBB | £700/min | 40 % | 240 kbps | 60 kbps | `SEC601` |
+| Office IT | Office Wi-Fi | eMBB | £900/min | 45 % | 320 kbps | 70 kbps | `OFF501` |
+| Canteen | Canteen Signage | **URLLC** | **£15/min** | 80 % | 140 kbps | 28 kbps | `CAN701` |
+| | **Total** | | | | **1,480 kbps** | 473 kbps | |
 
-# Initialize environment configuration
+The baselines add up to **156 %** of the link on purpose, so at busy times there isn't enough for
+everyone. Look at the Canteen: its label says top priority (URLLC), but an outage costs £15 a
+minute. The Quality lab's label is ordinary (eMBB), but it is regulated. A label-based network
+would protect the canteen screens over the lab; this one does the opposite.
+
+---
+
+## How one decision happens
+
+1. **Measure.** Every 2 s the gateway reports each slice's demand, throughput, latency (p95 of
+   probe round trips), jitter and loss.
+2. **Detect.** Contention opens when total demand is above 102 % of the 950 kbps link for two
+   samples in a row (4 s).
+3. **Decide.** The shortage is the traffic actually carried, the smaller of each slice's demand
+   and limit, minus 97 % of the link. The CBHA engine (Convex Business-Harm Arbitration) takes that
+   shortage in small steps from whichever slice loses the **least business value per kbps**. Small
+   cuts to several cheap slices beat one deep cut. Nothing goes below a contractual floor or past
+   a compliance ceiling, and the Clinic is never cut.
+4. **Apply.** The decision is saved, the gateway enforces the new limits on the next 20 ms tick,
+   and the controller checks what was enforced.
+5. **Explain.** The decision page and the cut department's phone show why, with the real numbers.
+6. **Recover.** When demand falls, contention closes after 3 normal samples. Each cut slice is
+   restored when its recovery window ends: 2 min for low tolerance, 10 min for moderate, 30 min
+   for high. An admin can restore everything at once with **Override**.
+
+The full algorithm is in [`docs/source/ALGORITHM.md`](docs/source/ALGORITHM.md).
+
+---
+
+## Quick start
+
+**Needs:** Windows 11 laptop, Node.js 22 or newer, and phones or laptops for the departments
+(any number from 0 to 7).
+
+```bash
+npm install
+```
+
+```bash
 npm run setup
+```
 
-# Seed the 7-department testbed
+```bash
+npm run build
+```
+
+```bash
 npm run seed
 ```
 
-### Step 2: Configure Windows Firewall
-Run PowerShell as Administrator and execute:
-```powershell
-.\scripts\windows\open-firewall.ps1
-```
-*(This safely opens ports 8080, 8888, and 4000 exclusively for the `LocalSubnet`)*.
+- `npm run setup` creates `.env` and a private gateway token.
+- `npm run build` is needed because phones load the **built** portal.
+- `npm run seed` creates the 7 departments, the 7 slices and the demo users.
 
-### Step 3: Turn On Windows Mobile Hotspot
-1. Open **Windows Settings → Network & internet → Mobile hotspot**.
-2. Toggle Mobile Hotspot to **On** (sharing Wi-Fi over 2.4 GHz or 5 GHz).
-3. Connect client phones or laptops to this hotspot.
-4. Run `npm run lan:info` to see the hotspot IP (`192.168.137.1`) and QR code.
+1. **Open the firewall** for the hotspot. Run PowerShell **as administrator**, once:
+   `scripts\windows\open-firewall.ps1` (and `close-firewall.ps1` to undo).
+2. **Turn on Mobile hotspot** (Settings → Network & internet → Mobile hotspot) and connect the
+   phones to it. Windows allows up to 8 devices.
+3. **Start everything:**
+   ```bash
+   npm run dev
+   ```
+4. **Get the join address and QR code:**
+   ```bash
+   npm run lan:info
+   ```
+5. **On each phone**, open `http://192.168.137.1:8080/join` (or your laptop's address from step 4),
+   or scan the QR code on the dashboard's **Testbed** page. Enter that department's join code.
+6. **On the laptop**, open the dashboard at <http://localhost:5173>. Sign in with the **Admin** or
+   **Manager** button (local sign-in, no passwords) and open **Testbed**.
 
-### Step 4: Start the Full Testbed
-```powershell
-npm run dev
-```
-This launches concurrently:
-- **Controller** at `http://localhost:4000` (API & Telemetry engine)
-- **Dashboard** at `http://localhost:5173` (Operator UI & SVG Topology Map)
-- **Slice Gateway** at `http://0.0.0.0:8080` (Shaper, Portal, & Active Prober)
-- **Southbound Loopback** at `http://127.0.0.1:9090` (Internal Control Plane)
-
-### Step 5: Join From Phones & Run Arbitration
-1. Open `http://<laptop-ip>:8080/join` on any connected phone (or scan the QR code from `npm run lan:info` or the dashboard).
-2. Enter a join code (e.g. `CLN101` for Clinic, `CAN701` for Canteen).
-3. Increase demand to **Flood (200%)** on Canteen.
-4. Observe the **Dashboard Testbed Topology**: CBHA triggers within 4 seconds, restricts Canteen to its floor (28 kbps), and leaves Clinic 100% un-degraded.
+No phones? Open several browser tabs on the laptop, each joined with a different code. Each tab
+is its own device. Or run the automated demo below.
 
 ---
 
-## 4. Single-Laptop Headless Demo (`demo:local`)
+## Things to try
 
-You can run the entire 6-scenario demonstration suite without any external phones:
+Use the demand buttons on each phone, or the scenario buttons on the dashboard:
 
-```powershell
+| Test | What to do | What should happen |
+|---|---|---|
+| **TC1 Normal day** | Everyone at **Normal** (55 %) | About 814 kbps on a 950 kbps link: no contention, all green |
+| **TC2 Canteen flood** | Canteen at **Flood** (200 %) | The Canteen's own 140 kbps limit holds it; nobody else is affected and nothing is cut |
+| **TC3 Lunch-hour rush** | Canteen Flood, Office and CCTV **Peak**, Warehouse **Busy** | Contention in ~4 s. The Canteen is cut first (towards its 28 kbps floor), then Office, CCTV and Warehouse a little. Clinic, Factory and Lab are protected, and every cut phone shows why |
+| **TC4 Everyone at peak** | Everyone at **Peak** | Even maximum cuts can't fit 1,480 kbps into 950: the decision is PARTIAL and the operator is told. No floor or ceiling is crossed |
+| **TC5 Recovery** | Everyone back to **Normal** | Contention closes. Slices come back after their recovery windows, or at once with Override |
+| **TC6 On/off proof** | TC3 load with **Automatic arbitration OFF**, then **ON** | With it off, the shared queue fills and *everyone* suffers, Clinic included. With it on, the protected slices recover. Wait ~25 s after switching before reading numbers. Record with the **experiment recorder** |
+
+### Automated demo on one laptop
+
+```bash
 npm run demo:local
 ```
 
-This runs all 6 test cases sequentially against in-process agents:
-- **TC1 (All Normal 55%):** Contention-free operation (814 kbps < 921.5 kbps; 0 drops).
-- **TC2 (Canteen Flood 280 kbps):** Shaper token bucket tail-drop contains rogue slice at 140 kbps baseline without triggering arbitration.
-- **TC3 (Lunch Rush Contention):** 1,309 kbps demand triggers CBHA within 4s. Canteen degraded to floor 28 kbps; Clinic 100% protected at 60 kbps.
-- **TC4 (Everyone at Peak 1,480 kbps):** Extreme overload. Slices cut strictly in order of business harm; floors and ceilings respected; Clinic untouched.
-- **TC5 (Step-down Recovery):** Demand drops back to 55%; contention clears after 3 clean samples; baselines restored.
-- **TC6 (A/B Comparative Proof):** Real-time empirical comparison:
-  - *Arbitration OFF:* Unmitigated bottleneck saturates root FIFO, causing severe queueing delay (p95 latency > 500 ms) and drops across Clinic and Factory.
-  - *Arbitration ON:* CBHA sheds non-critical load, bringing Clinic latency back to baseline (~128 ms) with 0% loss.
-- **Scorecard:** Prints formatted execution table and writes CSV to `experiments/<timestamp>-tc-demo.csv`.
+This runs TC1–TC6 with 7 built-in agents on the laptop in about 6 minutes, checks each test case,
+and saves a CSV and a summary in `experiments/`. The traffic stays inside the laptop (no Wi-Fi),
+so it tests the gateway and the decision loop. Use real phones for Wi-Fi results.
+
+**Measured result (`demo:local`, one laptop, TC6 lunch-hour rush, mean of 20 two-second windows
+each):**
+
+| Slice | Latency p95 OFF | Latency p95 ON | Loss OFF | Loss ON | Limit ON |
+|---|---:|---:|---:|---:|---:|
+| Patient Telemetry (Clinic) | 512 ms | **29 ms** | 4.68 % | **0 %** | 60 kbps (never cut) |
+| Factory Automation | 511 ms | **29 ms** | 15.93 % | **0 %** | 380 kbps (not cut) |
+| Lab Instrumentation | 508 ms | **31 ms** | 10.24 % | **0 %** | 180 kbps (not cut) |
+| Warehouse Operations | 509 ms | 452 ms | 13.89 % | 4.50 % | 123 kbps (−23 %) |
+| CCTV | 630 ms | 473 ms | 15.52 % | 15.96 % | 203 kbps (−15 %) |
+| Office Wi-Fi | 575 ms | 477 ms | 35.55 % | 31.35 % | 220 kbps (−31 %) |
+| Canteen Signage | 947 ms | 577 ms | 59.55 % | 90.26 % | 28 kbps (−80 %, its floor) |
+
+Raw data and every check: `experiments/2026-10-20T16-25-02-demo-local-summary.md`.
+
+With arbitration off, every slice shares one overflowing queue. With it on, the engine cuts the
+low-value slices, and the Clinic, Factory and Lab get their latency and loss back. The cut slices
+(above all the Canteen) absorb the loss instead.
 
 ---
 
-## 5. Headless Slice Agent (`slice-agent.exe`)
+## Project map
 
-For automated testing or connecting secondary laptops to the testbed:
+| Folder | What it is | Read |
+|---|---|---|
+| `apps/controller` | The brain: the simulated project's backend plus the gateway adapter | [README](apps/controller/README.md) |
+| `apps/gateway` | The network: shaping, measuring, device API | [README](apps/gateway/README.md) |
+| `apps/portal` | The website on each department's device | [README](apps/portal/README.md) |
+| `apps/dashboard` | The operator's web app | [README](apps/dashboard/README.md) |
+| `apps/agent` | A command-line "device" and Windows `.exe` | [README](apps/agent/README.md) |
+| `packages/shared` | Types shared by all of the above | [README](packages/shared/README.md) |
+| `scripts/` | `demo-local`, `calibrate`, `isp-check`, `lan-info`, `experiment-summary`, and the firewall scripts in `windows/` | |
+| `experiments/` | CSV results (git-ignored) and summaries | [README](experiments/README.md) |
+| `docs/` | Architecture, testbed, runbook, API, limitations | below |
 
-```powershell
-# Using the pre-built single-file executable:
-.\dist\slice-agent.exe --gateway http://192.168.137.1:8080 --code CLN101 --name clinic-agent --rate 60
+### Commands
 
-# Or using TypeScript runtime:
-npx tsx apps/agent/src/index.ts --gateway http://192.168.137.1:8080 --code CAN701 --name canteen-agent --rate 280
-```
-
-To compile the standalone Windows binary using Node Single Executable Application (SEA):
-```powershell
-npm run build:agent:exe
-```
-
----
-
-## 6. Available CLI Scripts
-
-| Command | Purpose |
+| Command | What it does |
 |---|---|
-| `npm run setup` | Copies `.env.example` to `.env` and generates secure gateway bearer token. |
-| `npm run seed` | Seeds the 7 departments and 7 slices with computed baseline/floor values. |
-| `npm run dev` | Runs controller, gateway, dashboard, and portal watch concurrently. |
-| `npm run build` | Builds production artifacts for all packages and applications. |
-| `npm start` | Production startup serving dashboard on :4000 and portal on :8080. |
-| `npm test` | Runs all 489 controller tests and 14 gateway unit tests. |
-| `npm run lan:info` | Displays dynamically detected LAN/Hotspot IPs and prints terminal QR code. |
-| `npm run demo:local` | Runs automated headless 6-scenario demonstration (TC1–TC6). |
-| `npm run calibrate` | Measures idle probe latency over 30s and verifies SLA target thresholds. |
-| `npm run isp:check` | Measures upstream ISP throughput to ensure testbed shaper is the true bottleneck. |
-| `npm run experiment:summary` | Generates statistical Markdown summary of the latest experiment CSV. |
-| `npm run build:agent:exe` | Compiles standalone `dist/slice-agent.exe` via Node SEA. |
+| `npm run dev` | Start controller, gateway, dashboard and portal together |
+| `npm run build` / `npm start` | Production build / run |
+| `npm test` | All tests: controller (the original engine tests plus testbed tests) and gateway |
+| `npm run demo:local` | TC1–TC6 automatically on one laptop (`-- --quick` for a shorter run) |
+| `npm run calibrate` | Measure each joined device's idle latency for 30 s and compare it with its SLA target |
+| `npm run isp:check` | Check the ISP is faster than the 1 Mbps link, so the gateway is the real bottleneck |
+| `npm run experiment:summary -- <csv>` | Summarise an experiment CSV by scenario and slice |
+| `npm run build:agent:exe` | Build `dist/slice-agent.exe` |
+
+### Documents
+
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md): components, ports, control loop, shaper.
+- [`docs/TESTBED.md`](docs/TESTBED.md): setup, scaling, SLA targets, test cases, results.
+- [`docs/RUNBOOK.md`](docs/RUNBOOK.md): step-by-step live demo.
+- [`docs/API.md`](docs/API.md): every endpoint.
+- [`docs/LIMITATIONS.md`](docs/LIMITATIONS.md): what is real and what is not.
+- [`docs/OPEN-QUESTIONS.md`](docs/OPEN-QUESTIONS.md): environment notes and known gaps.
 
 ---
 
-## 7. Testbed Invariants & Guarantees
+## What is real, and what isn't
 
-1. **Patient Telemetry Protection:** Clinic (SST 2 / SD 000101) is strictly exempt from degradation under all operating conditions. Its effective degradation ceiling is 0%.
-2. **Measurement Integrity:** Every metric displayed in the portal, dashboard, or agent CLI is measured from live network packets and active HTTP RTT probes.
-3. **Deterministic Token Buckets:** Shaper accuracy remains within $\pm 3\%$ of configured rates with $dt$ computed from `process.hrtime.bigint()`.
-4. **Idempotent Control Plane:** Limit allocations can be re-applied repeatedly without state drift.
-5. **Full Auditability:** Every arbitration decision generates an unalterable audit log with plain-English rationales.
+- **Real:** the Wi-Fi, the devices, the TCP traffic, and the limits enforced on it. Every number
+  shown is measured; unknown values show as —.
+- **Not real 5G:** slicing happens in an application gateway on the laptop (like a slice-aware
+  UPF or SD-WAN edge), not in a 5G radio network. The 1 Mbps link is a cap the gateway enforces.
+- **Not built yet:**
+  - phone **proxy mode** (`:8888`) passes traffic through without limits, so leave the phone's
+    proxy setting off;
+  - upload load;
+  - an opt-out from operator control.
+- **Sign-in is for your own network only.** There are no passwords, so don't expose it to the
+  internet.
 
----
-
-## 8. Documentation Index
-
-- [Architecture Guide](docs/ARCHITECTURE.md) — Comprehensive design of the shaper, control loop, and telemetry pipeline.
-- [Testbed Guide](docs/TESTBED.md) — Physical Wi-Fi setup, SLA targets, calibration, test procedures, and A/B experiment data.
-- [Demonstration Runbook](docs/RUNBOOK.md) — Step-by-step evaluator walkthrough and troubleshooting guide.
-- [API Reference](docs/API.md) — Southbound, Portal, Proxy, and Controller Testbed REST endpoint documentation.
-- [Limitations & Emulation](docs/LIMITATIONS.md) — Honest evaluation of application-layer slicing vs 3GPP radio slicing.
-- [Open Questions & Notes](docs/OPEN-QUESTIONS.md) — Hardware notes, Windows timer granularity, and permission boundaries.
+Details: [`docs/LIMITATIONS.md`](docs/LIMITATIONS.md).

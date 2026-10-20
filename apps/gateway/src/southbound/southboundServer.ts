@@ -19,6 +19,8 @@ export interface SouthboundServerOptions {
   probeManager: ProbeManager;
   onOperatorDemand?: (sliceCode: string, demandKbps: number, mode?: 'local' | 'internet') => void;
   onLatestDecision?: (sliceCode: string, decisionId: string, reason: string) => void;
+  /** Length of one measurement window. Rates are averaged over the real elapsed time. */
+  statsWindowMs?: number;
 }
 
 export class SouthboundServer {
@@ -31,6 +33,9 @@ export class SouthboundServer {
   private onLatestDecision?: (sliceCode: string, decisionId: string, reason: string) => void;
   private server?: http.Server;
   private startTime = Date.now();
+  private statsWindowMs: number;
+  private windowTimer?: NodeJS.Timeout;
+  private lastWindowAtMs = Date.now();
 
   constructor(opts: SouthboundServerOptions) {
     this.port = opts.port;
@@ -40,9 +45,32 @@ export class SouthboundServer {
     this.probeManager = opts.probeManager;
     this.onOperatorDemand = opts.onOperatorDemand;
     this.onLatestDecision = opts.onLatestDecision;
+    this.statsWindowMs = opts.statsWindowMs ?? 2000;
+  }
+
+  /**
+   * Close every slice's measurement window on a fixed clock, using the real elapsed time.
+   *
+   * Reading `/v1/stats` must not close a window: a second reader (the experiment recorder, a
+   * curl, a second controller) would split windows and every rate would be under-reported.
+   */
+  private closeWindows(): void {
+    const now = Date.now();
+    const elapsedS = Math.max(0.001, (now - this.lastWindowAtMs) / 1000);
+    this.lastWindowAtMs = now;
+    for (const s of this.scheduler.getAllSlices()) {
+      const activeCount = this.deviceRegistry.getActiveDevicesForSlice(s.item.code).length;
+      s.meter.updateActiveCounts(activeCount, s.sessions.size);
+      const probeStats = this.probeManager.computeWindowStats(s.item.code, activeCount > 0);
+      s.meter.rotateWindow(elapsedS, probeStats, s.queue.getDepthBytes());
+    }
   }
 
   public async start(): Promise<void> {
+    this.lastWindowAtMs = Date.now();
+    this.windowTimer = setInterval(() => this.closeWindows(), this.statsWindowMs);
+    this.windowTimer.unref();
+
     return new Promise((resolve) => {
       this.server = http.createServer((req, res) => {
         this.handleRequest(req, res);
@@ -56,6 +84,10 @@ export class SouthboundServer {
   }
 
   public async stop(): Promise<void> {
+    if (this.windowTimer) {
+      clearInterval(this.windowTimer);
+      this.windowTimer = undefined;
+    }
     return new Promise((resolve) => {
       if (this.server) {
         this.server.close(() => resolve());
@@ -161,20 +193,10 @@ export class SouthboundServer {
       return;
     }
 
-    // GET /v1/stats
+    // GET /v1/stats — the last completed window for every slice. Read-only: any number of
+    // readers see the same numbers.
     if (method === 'GET' && pathname === '/v1/stats') {
-      const allSlices = this.scheduler.getAllSlices();
-      const stats = allSlices.map((s) => {
-        const activeDevices = this.deviceRegistry.getActiveDevicesForSlice(s.item.code);
-        const activeCount = activeDevices.length;
-        const sessionCount = s.sessions.size;
-
-        s.meter.updateActiveCounts(activeCount, sessionCount);
-
-        const probeStats = this.probeManager.computeWindowStats(s.item.code, activeCount > 0);
-        return s.meter.rotateWindow(2.0, probeStats, s.queue.getDepthBytes());
-      });
-
+      const stats = this.scheduler.getAllSlices().map((s) => s.meter.getLatestStats());
       this.sendJson(res, 200, stats);
       return;
     }

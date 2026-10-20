@@ -75,7 +75,7 @@ The system separates concerns across six modular packages organized in an npm mo
 | **4000** | `0.0.0.0` | Local Subnet | **Controller API & Dashboard:** REST endpoints, Socket.IO updates, OpenAPI spec, production static asset server. |
 | **5173** | `127.0.0.1` | Localhost | **Dashboard Dev Server:** Vite development server with hot-module reloading. |
 | **8080** | `0.0.0.0` | Local Subnet | **Slice Gateway:** Portal static files, `/portal-api/*`, `/load/down`, `/probe`, and WebSocket `/ws`. |
-| **8888** | `0.0.0.0` | Local Subnet | **HTTP Forward Proxy:** Transparent forward proxy with HTTP `CONNECT` tunneling for real mobile applications. |
+| **8888** | `0.0.0.0` | Local Subnet | **HTTP Forward Proxy (optional, off by default):** forwards joined devices' HTTP and `CONNECT` traffic. Not shaped yet; see LIMITATIONS §2.3. |
 | **9090** | **`127.0.0.1` only** | **Loopback Only** | **Southbound API:** Secure control interface between controller and gateway. Protected by Bearer token. |
 
 > **Security Guardrail:** Port 9090 is strictly bound to `127.0.0.1`. Client devices on the Wi-Fi hotspot or local subnet cannot reach or tamper with the southbound control API.
@@ -102,34 +102,35 @@ sequenceDiagram
         GW-->>ADP: Per-slice metrics (demand, used, latency, jitter, loss)
         ADP->>DET: Evaluate aggregate demand vs offered capacity (950 kbps)
         alt Ratio > 1.02 for 2 consecutive samples
-            DET->>CBHA: Trigger Contention (Carried Traffic, Headroom: 3%)
-            CBHA->>CBHA: Solve Quadratic Harm Optimization
+            DET->>CBHA: Trigger Contention (shortage = carried traffic - 97% of capacity)
+            CBHA->>CBHA: Water-fill on convex business harm (per-kbps marginal harm)
             CBHA-->>MGR: Feasible Plan (Degradation Allocations)
             MGR->>AUD: Record decision and rationales (Decision ID)
             MGR->>GW: PUT /v1/slices/:code/limit (Idempotent)
             GW-->>MGR: Limit applied (effectiveKbps)
             MGR->>DB: Broadcast new limits & degradation banners
-        else Ratio <= 1.00 for 3 consecutive samples
-            DET->>MGR: Trigger Recovery Sweep
-            MGR->>GW: Incrementally restore limits towards baseline
+        else Ratio <= 1.02 for 3 consecutive samples
+            DET->>DET: Close the contention event
+            MGR->>GW: Restore each cut slice when its recovery window ends (2-30 min) or on admin override
         end
     end
 ```
 
 ### 1. Sampling (`GatewayTelemetryAdapter`)
 - Calls `GET /v1/stats` on the gateway Southbound API.
-- Converts rates from `kbps` to `Mbps` using the scale factor $s = 0.1$ ($1 \text{ unit} = 1 \text{ kbps}$).
+- Passes the gateway's kbps values straight into the engine's `...Mbps` fields: in this testbed **1 unit = 1 kbps**, and no conversion is needed because the engine does not depend on units.
 - If the gateway is unreachable or missing data for a slice, marks health as `UNKNOWN`, preventing dangerous arbitration on stale metrics.
 
 ### 2. Contention Detection (`ContentionDetector`)
 - Calculates aggregate demand ratio:
-  $$\text{Ratio} = \frac{\sum \text{Carried Demand}}{\text{Offered Capacity} = 950\text{ kbps}}$$
-- Contention opens if $\text{Ratio} \ge 1.02$ for **2 consecutive ticks** (hysteresis prevents flapping on transient spikes).
+  $\text{Ratio} = \frac{\sum \text{Demand}}{\text{Offered Capacity} = 950\text{ kbps}}$
+- Contention opens if $\text{Ratio} > 1.02$ for **2 consecutive samples** and closes after **3 clear samples** (hysteresis prevents flapping on transient spikes).
+- The engine then sizes the cut on **carried** traffic, $\sum \min(\text{demand}_i, \text{limit}_i)$: demand that a slice's own limit already holds back is not counted twice. If current limits already fit the link (TC2), nothing is cut.
 
 ### 3. CBHA Optimization (`PolicyEngine`)
-- Runs the immutable Context-Based Harm Arbitration solver copied from SOURCE.
+- Runs the immutable Convex Business-Harm Arbitration solver copied from SOURCE.
 - Solves for the minimal business harm vector across the 7 departments subject to:
-  1. $\sum \text{Allocated Bandwidth} \le \text{Offered Capacity} \times (1 - \text{Headroom Target} = 0.03) \approx 921.5\text{ kbps}$.
+  1. Carried traffic after the cuts, $\sum \min(\text{demand}_i, \text{limit}_i) \le \text{Offered Capacity} \times (1 - 0.03) \approx 921.5\text{ kbps}$ (3 % headroom target).
   2. $\text{Allocated}_i \ge \text{Floor}_i$ (Contractual minimum guaranteed rate).
   3. $\text{Degradation}_i \le \text{Ceiling}_i$ (Max allowed degradation percentage).
   4. Clinic effective degradation ceiling is **0%** (Life-Safety exemption).
@@ -139,9 +140,10 @@ sequenceDiagram
 - Sends idempotent `PUT /v1/slices/:code/limit` to the gateway.
 - Southbound updates take effect within a single 20 ms scheduler tick.
 
-### 5. Recovery Sweep
-- When aggregate demand falls below capacity for **3 clear samples**, recovery begins.
-- Step-wise increments restore degraded slices towards baseline allocations at a rate governed by cooldown tunables.
+### 5. Recovery
+- The contention event closes after **3 clear samples** (demand ratio back at or below 1.02).
+- Each cut slice is restored to its baseline when its **recovery window** ends. The window comes from the department's recovery tolerance: 2 min (low), 10 min (moderate) or 30 min (high). A recovery sweep checks every 5 s.
+- An administrator can restore everything at once with **Override** on the decision page. The reason is recorded in the audit log.
 
 ---
 
@@ -152,10 +154,10 @@ The data plane in `apps/gateway` models a carrier-grade edge gateway / slice-awa
 ```
 Client Traffic In ──▶ [Slice Ingress Filter]
                              │
-                             ├──▶ Slice Queue 1 (Capacity: 0.5s × Baseline) ──▶ Token Bucket 1 ──┐
-                             ├──▶ Slice Queue 2 (Capacity: 0.5s × Baseline) ──▶ Token Bucket 2 ──┤
+                             ├──▶ Slice Queue 1 (0.5 s × current limit)    ──▶ Token Bucket 1 ──┐
+                             ├──▶ Slice Queue 2 (0.5 s × current limit)    ──▶ Token Bucket 2 ──┤
                              │    ...                                                            ├──▶ [Root Shared Queue] ──▶ Sockets Out
-                             └──▶ Slice Queue 7 (Capacity: 0.5s × Baseline) ──▶ Token Bucket 7 ──┘    (950 kbps Cap)
+                             └──▶ Slice Queue 7 (0.5 s × current limit)    ──▶ Token Bucket 7 ──┘    (950 kbps Cap)
                                   (Over-rate → Slice Tail Drop)                                       (Over-rate → Root Tail Drop)
 ```
 
@@ -170,6 +172,8 @@ this.lastTickNs = nowNs;
 
 ### Token Bucket Logic
 On each tick ($dt$ seconds):
+Each bucket holds 0.1 s of its rate, but never less than one 1 KB chunk; otherwise a slice cut to 28 kbps (350 bytes of tokens) could never send its head chunk. Each slice queue holds 0.5 s of traffic at the slice's **current** limit, so a slice cut to its floor queues about 0.5 s, not several seconds.
+
 1. **Refill Slice Buckets:**
    $$\text{Tokens}_i = \min\left(\text{Tokens}_i + \text{LimitBps}_i \times \frac{dt}{8}, \text{BurstBytes}_i\right)$$
 2. **Refill Root Bucket:**
@@ -183,10 +187,8 @@ On each tick ($dt$ seconds):
 
 Probe measurements represent the ground-truth experience of each slice:
 
-1. **In-Band Measurement:** Clients send `GET /probe?device=<id>&seq=<n>` every 500 ms. The gateway injects a 64-byte probe payload directly into **that slice's FIFO queue**. If the slice is congested, the probe sits behind data packets, experiencing true queueing delay.
-2. **RFC 3550 Jitter Computation:**
-   $$D(i, j) = (R_j - S_j) - (R_i - S_i)$$
-   $$J(i) = J(i - 1) + \frac{|D(i, j)| - J(i - 1)}{16}$$
+1. **In-Band Measurement:** Clients send `GET /probe?device=<id>&seq=<n>` every second (the portal and the agent default; `demo:local` uses 500 ms). The gateway injects a 64-byte probe payload directly into **that slice's FIFO queue**. If the slice is congested, the probe sits behind data packets, experiencing true queueing delay.
+2. **Jitter:** the mean absolute difference between consecutive probe round-trip times in the last 4 s, $J = \frac{1}{n-1}\sum_{k=2}^{n} |RTT_k - RTT_{k-1}|$. This is in the spirit of RFC 3550 interarrival jitter, without its 1/16 smoothing.
 3. **Loss Accounting:**
    $$\text{Loss } \% = \max\left(\frac{\text{Dropped Bytes}}{\text{Offered Bytes}}, \frac{\text{Lost Probes}}{\text{Sent Probes}}\right) \times 100$$
 4. **Availability:** Rolling 5-minute ratio of answered probes to dispatched probes.
@@ -197,6 +199,6 @@ Probe measurements represent the ground-truth experience of each slice:
 ## 7. Zero-Dependency & Sandboxed Windows Adaptations
 
 To comply with strict environment constraints (Windows 11, Node 24, zero native add-ons, sandbox execution):
-- **Pure-TS QR Code Engine (`src/lib/qrcode.ts`):** Zero-dependency QR code generator rendering UTF-8 terminal blocks and SVG vector graphics without canvas or native bindings.
+- **QR codes:** generated with the standard `qrcode` npm package (pure JavaScript, no native bindings), for both the dashboard and `npm run lan:info`. An earlier hand-written encoder produced codes that phones could not scan and was removed.
 - **Node 24 Sandboxed Realpath Preload (`scripts/patch-realpath.cjs`):** Transparently patches `fs.realpathSync.native` to `fs.realpathSync`, circumventing Windows security sandbox `EPERM` limitations.
 - **Dynamic Adapter Introspection:** Dynamically probes `os.networkInterfaces()` for hosted networks, Mobile Hotspot aliases, and local LAN adapters at runtime, eliminating hard-coded IP dependencies.

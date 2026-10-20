@@ -26,7 +26,7 @@ export function SlicePage({ device, onLeave }: Props) {
   // Fetch initial snapshot
   const fetchSnapshot = useCallback(async () => {
     try {
-      const res = await fetch(`/portal-api/snapshots?device=${device.deviceId}`);
+      const res = await fetch(`/portal-api/snapshot?device=${device.deviceId}`);
       if (res.ok) {
         const data: SliceSnapshot = await res.json();
         setSnapshot(data);

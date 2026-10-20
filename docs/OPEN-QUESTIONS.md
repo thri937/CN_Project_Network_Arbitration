@@ -17,4 +17,9 @@ This document logs design decisions, hardware/OS constraints, and items requirin
 
 ## 5. WSL Availability and Linux Kernel TC (Phase 8 Optional)
 - As noted in the system environment, Windows Subsystem for Linux (WSL) is installed and available.
-- While the native Windows 11 application-layer token bucket shaper in `apps/gateway` fully satisfies all testbed requirements without WSL, an optional Linux `tc-htb` adapter can be deployed inside WSL or native Linux for L3 kernel queueing discipline enforcement if desired.
+- WSL2 runs Linux in a virtual machine behind its own NAT, so `tc` inside WSL **cannot** shape traffic from devices on the Windows hotspot. Kernel (L3) enforcement with `tc-htb` needs the laptop to boot Linux, or a Linux device such as a Raspberry Pi acting as the access point. Not built.
+
+## 6. Known gaps (not built yet)
+- **Proxy mode does not shape traffic.** `:8888` forwards joined devices' traffic unshaped (see LIMITATIONS §2.3), so TC9 cannot pass yet.
+- **Upload load** is not implemented; load sessions are download only.
+- **Operator control** has no opt-out switch on the portal.

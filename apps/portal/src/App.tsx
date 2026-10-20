@@ -3,10 +3,14 @@ import type { BoundDevice } from './types';
 import { JoinPage } from './components/JoinPage';
 import { SlicePage } from './components/SlicePage';
 
+// The bound device lives in sessionStorage, which is separate for every tab, so several tabs on
+// one laptop can each join a different slice. The nickname stays in localStorage as a convenience.
+const DEVICE_KEY = 'cn_bound_device';
+
 export default function App() {
   const [device, setDevice] = useState<BoundDevice | null>(() => {
     try {
-      const stored = localStorage.getItem('cn_bound_device');
+      const stored = sessionStorage.getItem(DEVICE_KEY);
       return stored ? JSON.parse(stored) : null;
     } catch {
       return null;
@@ -18,7 +22,7 @@ export default function App() {
     const params = new URLSearchParams(window.location.search);
     const deviceIdParam = params.get('device');
     if (deviceIdParam && (!device || device.deviceId !== deviceIdParam)) {
-      fetch(`/portal-api/snapshots?device=${deviceIdParam}`)
+      fetch(`/portal-api/snapshot?device=${deviceIdParam}`)
         .then((res) => {
           if (res.ok) return res.json();
           throw new Error('Not found');
@@ -34,7 +38,7 @@ export default function App() {
             mode: 'local',
             operatorControlEnabled: true,
           };
-          localStorage.setItem('cn_bound_device', JSON.stringify(bound));
+          sessionStorage.setItem(DEVICE_KEY, JSON.stringify(bound));
           setDevice(bound);
         })
         .catch(() => {
@@ -44,13 +48,13 @@ export default function App() {
   }, [device]);
 
   const handleJoined = (bound: BoundDevice) => {
-    localStorage.setItem('cn_bound_device', JSON.stringify(bound));
+    sessionStorage.setItem(DEVICE_KEY, JSON.stringify(bound));
     setDevice(bound);
     window.history.replaceState({}, '', `?device=${bound.deviceId}`);
   };
 
   const handleLeave = () => {
-    localStorage.removeItem('cn_bound_device');
+    sessionStorage.removeItem(DEVICE_KEY);
     setDevice(null);
     window.history.replaceState({}, '', '/');
   };

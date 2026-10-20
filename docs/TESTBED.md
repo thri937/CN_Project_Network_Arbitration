@@ -29,12 +29,12 @@ SOURCE was calibrated for a 10 Gbps core network link. The testbed scales all ba
 $$\text{Scale Factor } s = \frac{\text{NETWORK\_TOTAL\_CAPACITY\_MBPS}}{10,000} = \frac{1,000\text{ kbps}}{10,000\text{ Mbps}} = 0.1$$
 
 - **Total Link Capacity:** $1,000\text{ kbps}$ (1 Mbps).
-- **Reserved Out-of-Band Capacity:** $50\text{ kbps}$ (for portal HTML/JS, WebSocket updates, and control messages).
+- **Reserved Capacity:** $50\text{ kbps}$, never offered to slices. Management traffic (portal HTML/JS, WebSocket updates, API calls) is not shaped at all and is counted separately, like out-of-band OAM.
 - **Offered Slice Capacity:** $950\text{ kbps}$.
 - **Sum of Baseline Allocations:** $1,480\text{ kbps}$ ($156\%$ oversubscription of offered capacity).
 - **Sum of Guaranteed Floors:** $473\text{ kbps}$ ($50\%$ of offered capacity).
-- **Contention Trigger:** Aggregate carried load $\ge 969\text{ kbps}$ ($1.02 \times 950\text{ kbps}$) for 2 ticks.
-- **Headroom Target:** $3\%$ ($28.5\text{ kbps}$), targeting an operating ceiling of $\approx 921.5\text{ kbps}$.
+- **Contention Trigger:** total **demand** above $969\text{ kbps}$ ($1.02 \times 950\text{ kbps}$) for 2 samples (4 s); it closes after 3 clear samples.
+- **How much is cut:** the engine sizes the cut on **carried** traffic, $\sum \min(\text{demand}_i, \text{limit}_i)$, so demand a slice's own limit already holds back isn't counted. The target is the link minus a $3\%$ headroom: $\approx 921.5\text{ kbps}$.
 
 ---
 
@@ -58,60 +58,74 @@ $$\text{Loss Target} = \operatorname{clamp}(10 \times \text{SOURCE Loss}, 0.1\%,
 
 ---
 
-## 4. Calibration Benchmark (`npm run calibrate`)
+## 4. Calibration (`npm run calibrate`)
 
-Calibration measures idle probe RTTs across connected devices over 30 seconds. If idle $p95$ exceeds $60\%$ of a slice's latency target, the operator receives a calibration warning:
+Join one device to each slice, leave them idle (no load), then run `npm run calibrate`. For 30 s it
+reads each slice's probe round-trip times from the gateway and compares the idle p95 with 60 % of
+the slice's latency target. A slice with no device shows "no measurement" rather than 0.
 
-```
-=== Calibrating Idle Probe Latency (30s) ===
-slice-telemetry      p50:   12 ms | p95:   28 ms | target:  150 ms | [PASS] idle p95 (28 ms) <= 60% target (150 ms)
-slice-factory        p50:   15 ms | p95:   32 ms | target:  180 ms | [PASS] idle p95 (32 ms) <= 60% target (180 ms)
-slice-lab            p50:   14 ms | p95:   31 ms | target:  500 ms | [PASS] idle p95 (31 ms) <= 60% target (500 ms)
-slice-warehouse      p50:   14 ms | p95:   30 ms | target:  250 ms | [PASS] idle p95 (30 ms) <= 60% target (250 ms)
-slice-cctv           p50:   16 ms | p95:   34 ms | target:  900 ms | [PASS] idle p95 (34 ms) <= 60% target (900 ms)
-slice-office         p50:   15 ms | p95:   33 ms | target:  600 ms | [PASS] idle p95 (33 ms) <= 60% target (600 ms)
-slice-canteen        p50:   14 ms | p95:   29 ms | target:  350 ms | [PASS] idle p95 (29 ms) <= 60% target (350 ms)
-```
+Fill this in from your hotspot session (phones on Wi-Fi):
+
+| Slice | Device | Idle p50 (ms) | Idle p95 (ms) | Target (ms) | Within 60 % of target? |
+|---|---|---:|---:|---:|---|
+| patient-telemetry | | | | 150 | |
+| factory-automation | | | | 180 | |
+| lab-instrumentation | | | | 500 | |
+| warehouse-operations | | | | 250 | |
+| cctv | | | | 900 | |
+| office-wi-fi | | | | 600 | |
+| canteen-signage | | | | 350 | |
+
+If an idle p95 is above 60 % of its target, Wi-Fi alone uses most of that slice's latency budget.
+Note it here rather than changing the targets.
 
 ---
 
-## 5. Test Case Specifications (TC1–TC9)
+## 5. Test cases (TC1–TC9)
 
-| ID | Name | Scenario Description | Expected Arbitration Outcome | Pass Criteria |
+| ID | Name | Load | Expected outcome | Checked by `demo:local` |
 |---|---|---|---|---|
-| **TC1** | **Normal Day** | All 7 slices set demand to 55% of baseline ($\approx 814\text{ kbps}$). | Aggregate demand ratio $\approx 0.86 < 1.02$. Contention remains closed. | 0 drops; carried load $\approx$ demand ($\pm 5\%$); all SLA chips green. |
-| **TC2** | **Canteen Flood** | Canteen sets demand to Flood ($280\text{ kbps}$); other 6 remain at 55%. | Shaper token bucket caps Canteen at its $140\text{ kbps}$ limit. Carried total $874\text{ kbps} < 950\text{ kbps}$. | Canteen held $\le 145\text{ kbps}$; other slices unaffected; no arbitration needed. |
-| **TC3** | **Lunch Rush** | Canteen Flood ($280$), Office Peak ($320$), CCTV Peak ($240$), Warehouse Busy ($128$). | Contention opens ($\text{ratio} = 1.25 > 1.02$). CBHA degrades Canteen to floor ($28\text{ kbps}$) and Office IT. | Clinic allocated $60\text{ kbps}$ (0% cut); Canteen cut to $28\text{ kbps}$; new limits enforced $\le 20\text{ ms}$. |
-| **TC4** | **All Peak** | All 7 slices request 100% baseline ($1,480\text{ kbps}$). | Heavy contention ($\text{ratio} = 1.56$). Partial feasibility escalation. Slices degraded up to their ceilings. | No slice breached past its floor or ceiling; Clinic remains 100% untouched. |
-| **TC5** | **Step-down Recovery** | After TC3/TC4, all slices return demand to Normal ($55\%$). | Demand ratio drops below 1.00. After 3 clear samples, recovery sweep restores limits. | Limits restored back towards baseline; audit trail logs recovery. |
-| **TC6** | **A/B Proof** | TC3 rush traffic injected with Arbitration OFF for 60s, then ON for 60s. | Without CBHA, root queue overflows causing high latency & drops for all slices. With CBHA, root clears. | Empirical CSV shows Clinic/Factory latency and loss strictly lower with Arbitration ON. |
-| **TC7** | **Device Leaves** | Client phone disconnects Wi-Fi during active session. | No requests for 15s triggers offline event. Demand drops. Availability falls. | Device removed from active set; health becomes `UNKNOWN` if 0 devices remain. |
-| **TC8** | **Gateway Down** | Slice gateway stopped for 20 seconds. | Controller detects connection failure, flags telemetry as `UNKNOWN`, pauses arbitration. | Controller retries idempotently; auto-recovers when gateway restarts. |
-| **TC9** | **Real App Proxy** | Mobile device routes web traffic through forward proxy on `:8888`. | Device traffic paced through slice token bucket using TCP backpressure. | Phone speed test matches slice limit ($\pm 15\%$); unauthenticated IP receives 403 join prompt. |
+| **TC1** | Normal day | All 7 at 55 % of baseline (≈814 kbps) | Demand ratio ≈ 0.86: no contention, no decision | No contention; every slice carries its demand (±10 %); loss < 1 % |
+| **TC2** | Canteen flood | Canteen 280 kbps (200 %), others 55 % | Demand ratio ≈ 1.07, so contention may open. But the Canteen's own 140 kbps limit holds it, and carried traffic (≈877 kbps) fits the link, so **nothing is cut** | Canteen ≤ 147 kbps; no limit changed; others carry their demand |
+| **TC3** | Lunch-hour rush | Canteen 200 %, Office and CCTV 100 %, Warehouse 80 %, rest 55 % (≈1,309 kbps, ratio ≈ 1.38) | Contention opens in ~4 s. The engine cuts the cheapest slices (Canteen to its 28 kbps floor, then Office, CCTV, Warehouse). Clinic, Factory and Lab are untouched | Contention opened; limits enforced; Clinic not cut; no floor or ceiling crossed; cut slices run at their new limits (±10 %); Clinic, Factory and Lab p95 within SLA |
+| **TC4** | Everyone at peak | All 7 at 100 % (1,480 kbps, ratio ≈ 1.56) | Even maximum cuts can't fit the link: verdict **PARTIAL**, escalated to the operator | PARTIAL decision; Clinic not cut; no floor or ceiling crossed |
+| **TC5** | Recovery | Back to 55 % | Contention closes after 3 clear samples. Each cut slice is restored when its recovery window ends (2 min low, 10 min moderate, 30 min high tolerance). Override restores at once | Contention closed; recovery scheduled; Override returns every slice to baseline |
+| **TC6** | A/B proof | TC3 load, automatic arbitration OFF, then ON | OFF: the shared queue overflows and every slice gets delay and loss, Clinic included. ON: the protected slices recover; the cut slices take the loss | 25 s warm-up + 40 s measured per phase. Protected slices: lower p95 and no more loss with ON, and within SLA |
+| **TC7** | Device leaves | Turn off a phone's Wi-Fi | Device offline after 15 s; that slice's demand drops; availability falls; health UNKNOWN if no device is left | Manual (hotspot) |
+| **TC8** | Gateway down | Stop the gateway for 20 s | Controller marks telemetry UNKNOWN and does not arbitrate on it; recovers by itself | Manual |
+| **TC9** | Phone proxy | Phone uses proxy `:8888` | **Cannot pass yet**: the proxy forwards traffic without shaping it (LIMITATIONS §2.3) | Not built |
 
 ---
 
-## 6. Empirical A/B Experimental Results (TC6)
+## 6. Results
 
-The following real-world telemetry data was collected during the automated execution of **TC6** on the physical testbed (`experiments/1792506306602-tc-demo.csv`, 441 data points):
+### 6.1 `demo:local`: one laptop, loopback (no Wi-Fi), 20 October 2026
 
-| Arbitration Mode | Slice Name | Mean Latency | p95 Latency | Mean Packet Loss | Mean Carried Tput | SLA Health Status |
-|---|---|---:|---:|---:|---:|---|
-| **Arbitration OFF** *(Unmanaged)* | **Patient Telemetry** | **455.6 ms** | **492.0 ms** | 0.00% | 34.1 kbps | **SLA BREACH** (Target: 150 ms) |
-| | **Factory Automation**| **457.4 ms** | **505.0 ms** | 0.00% | 214.1 kbps | **SLA BREACH** (Target: 180 ms) |
-| | **Lab Instrumentation**| **457.4 ms** | **505.0 ms** | 0.00% | 103.1 kbps | Normal (Target: 500 ms) |
-| | **Warehouse Operations**| **438.0 ms** | **474.0 ms** | 0.00% | 106.0 kbps | **SLA BREACH** (Target: 250 ms) |
-| | **CCTV** | 1,007.6 ms | 1,044.0 ms | 0.00% | 182.8 kbps | SLA Breach (Target: 900 ms) |
-| | **Office Wi-Fi** | 1,039.0 ms | 1,075.0 ms | 0.00% | 240.6 kbps | SLA Breach (Target: 600 ms) |
-| | **Canteen Signage** | — *(Congested)* | — | 74.54% | 50.9 kbps | Congested |
-| **Arbitration ON** *(CBHA Active)* | **Patient Telemetry** | **246.3 ms** | **492.0 ms** | **2.75%** | **36.6 kbps** | **PROTECTED (0% Cut, 60 kbps)** |
-| | **Factory Automation**| **246.6 ms** | **505.0 ms** | **7.51%** | **212.2 kbps** | Within Contractual Ceilings |
-| | **Lab Instrumentation**| **246.1 ms** | **505.0 ms** | **3.45%** | **105.9 kbps** | Within Contractual Ceilings |
-| | **Warehouse Operations**| **244.6 ms** | **476.0 ms** | **3.89%** | **110.1 kbps** | Within Contractual Ceilings |
-| | **CCTV** | 373.0 ms | 868.0 ms | 7.91% | 173.0 kbps | Recovered Under Target |
-| | **Office Wi-Fi** | 381.7 ms | 900.0 ms | 12.45% | 216.1 kbps | Recovered Under Target |
-| | **Canteen Signage** | 484.6 ms | 971.0 ms | **62.87%** | **63.9 kbps** | **SHED TO FLOOR (28 kbps)** |
+All 6 automated test cases passed (`experiments/2026-10-20T16-25-02-demo-local-summary.md`).
+TC6, lunch-hour-rush load, means over 20 two-second windows per phase, measured after a 25 s
+warm-up:
 
-### Analysis of Findings:
-1. **Unmanaged Bottleneck Failure (Arbitration OFF):** When link demand exceeds 950 kbps without arbitration, the shared root queue fills to capacity. **Patient Telemetry latency skyrockets to 455.6 ms** (a $203\%$ breach of its 150 ms SLA target), and Factory Automation latency reaches 457.4 ms ($154\%$ breach). Both mission-critical applications fail.
-2. **Business Value Protection (Arbitration ON):** As soon as CBHA activates, it sheds $112\text{ kbps}$ of carried load from **Canteen Signage** (throttling it to its 28 kbps floor and absorbing 62.87% loss). This instantly decompresses the root queue, restoring low latency and guaranteed baseline allocations to Patient Telemetry and Factory Automation.
+| Slice | Latency p95 OFF | Latency p95 ON | Loss OFF | Loss ON | Limit ON |
+|---|---:|---:|---:|---:|---:|
+| Patient Telemetry (Clinic) | 512 ms | **29 ms** | 4.68 % | **0 %** | 60 kbps (never cut) |
+| Factory Automation | 511 ms | **29 ms** | 15.93 % | **0 %** | 380 kbps (not cut) |
+| Lab Instrumentation | 508 ms | **31 ms** | 10.24 % | **0 %** | 180 kbps (not cut) |
+| Warehouse Operations | 509 ms | 452 ms | 13.89 % | 4.50 % | 123 kbps (−23 %) |
+| CCTV | 630 ms | 473 ms | 15.52 % | 15.96 % | 203 kbps (−15 %) |
+| Office Wi-Fi | 575 ms | 477 ms | 35.55 % | 31.35 % | 220 kbps (−31 %) |
+| Canteen Signage | 947 ms | 577 ms | 59.55 % | 90.26 % | 28 kbps (−80 %, its floor) |
+
+**What it shows.**
+- With arbitration **off**, all slices share one overflowing queue: every slice waits about half
+  a second, and even the Clinic loses 4.7 % of its traffic.
+- With it **on**, the engine cuts the four cheapest slices, and carried traffic fits the link
+  again. Clinic, Factory and Lab drop to ~29 ms with no loss.
+- The cut slices take the loss instead: the Canteen asks for ten times its 28 kbps floor, so
+  90 % of its traffic is dropped.
+- This is loopback, so it measures the gateway and the control loop, not Wi-Fi.
+
+### 6.2 Hotspot run (to do)
+
+Repeat TC6 with real phones on the hotspot. Use the dashboard's **experiment recorder** with one
+recording per phase (e.g. `TC6-OFF`, `TC6-ON`), wait ~25 s after each switch before recording,
+then run `npm run experiment:summary -- experiments/<file>.csv`. Put the table here.

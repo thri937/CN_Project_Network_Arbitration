@@ -1,5 +1,5 @@
 import { FifoQueue, QueueChunk } from './queue.js';
-import { TokenBucket } from './tokenBucket.js';
+import { MAX_CHUNK_BYTES, TokenBucket } from './tokenBucket.js';
 import { SliceMeter } from '../meter/sliceMeter.js';
 import { LoadSession } from '../sessions/loadSession.js';
 import { SliceCatalogueItem } from '@cn/shared';
@@ -84,9 +84,18 @@ export class ShaperScheduler {
     this.rootDiscipline = d;
   }
 
+  /**
+   * A slice queue holds queueSeconds of traffic at the slice's CURRENT limit. Sizing it on the
+   * baseline would leave a slice cut to its floor with a queue that takes seconds to drain
+   * (140 kbps of buffer drained at 28 kbps is 2.5 s), longer than the probe timeout. Every
+   * probe would then count as lost even though the slice is moving.
+   */
+  private sliceQueueCapacity(limitKbps: number): number {
+    return Math.max(2 * MAX_CHUNK_BYTES, ((limitKbps * 1000) / 8) * this.queueSeconds);
+  }
+
   public registerSlice(item: SliceCatalogueItem): void {
-    const baselineBps = (item.baselineKbps * 1000) / 8;
-    const queueCapacity = Math.max(1024, baselineBps * this.queueSeconds);
+    const queueCapacity = this.sliceQueueCapacity(item.currentLimitKbps);
 
     if (this.slices.has(item.code)) {
       const existing = this.slices.get(item.code)!;
@@ -122,6 +131,7 @@ export class ShaperScheduler {
 
     s.item.currentLimitKbps = newLimitKbps;
     s.bucket.setRateKbps(newLimitKbps);
+    s.queue.setCapacityBytes(this.sliceQueueCapacity(newLimitKbps));
     s.meter.setLimitKbps(newLimitKbps);
     s.drrQuantum = Math.max(1024, Math.floor((newLimitKbps * 1000) / 8 / 50));
     return true;
@@ -208,7 +218,7 @@ export class ShaperScheduler {
         let bytesNeeded = rateBps * dtSeconds;
 
         while (bytesNeeded > 0) {
-          const chunkSize = Math.min(1024, Math.ceil(bytesNeeded));
+          const chunkSize = Math.min(MAX_CHUNK_BYTES, Math.ceil(bytesNeeded));
           const chunkData = session.produceChunk(chunkSize);
           if (!chunkData) break;
 

@@ -23,14 +23,15 @@ export async function runCalibration(durationS = 30): Promise<{
   console.log(`=== Calibrating Idle Probe Latency (${durationS}s) ===`);
   console.log('Ensure devices are joined and idle (no active load sessions)...\n');
 
+  // Latency targets per slice code (docs/TESTBED.md §3).
   const slaTargets: Record<string, number> = {
-    'slice-telemetry': 150,
-    'slice-factory': 180,
-    'slice-lab': 500,
-    'slice-warehouse': 250,
-    'slice-cctv': 900,
-    'slice-office': 600,
-    'slice-canteen': 350,
+    'patient-telemetry': 150,
+    'factory-automation': 180,
+    'lab-instrumentation': 500,
+    'warehouse-operations': 250,
+    cctv: 900,
+    'office-wi-fi': 600,
+    'canteen-signage': 350,
   };
 
   const p95History: Record<string, number[]> = {};
@@ -82,7 +83,12 @@ export async function runCalibration(durationS = 30): Promise<{
 
   console.log('\n--- Calibration Summary ---');
   for (const [code, p95Arr] of Object.entries(p95History)) {
-    const target = slaTargets[code] || 500;
+    const target = slaTargets[code] ?? 500;
+    if (p95Arr.length === 0) {
+      // No device answered a probe: there is nothing to calibrate, and 0 ms would be made up.
+      console.log(`${code.padEnd(22)} no measurement — join a device to this slice and rerun`);
+      continue;
+    }
     const avgP95 = p95Arr.length > 0 ? Math.round(p95Arr.reduce((a, b) => a + b, 0) / p95Arr.length) : 0;
     const p50Arr = p50History[code] || [];
     const avgP50 = p50Arr.length > 0 ? Math.round(p50Arr.reduce((a, b) => a + b, 0) / p50Arr.length) : 0;
@@ -96,7 +102,7 @@ export async function runCalibration(durationS = 30): Promise<{
       ? `[WARN] idle p95 (${avgP95} ms) > 60% of SLA target (${target} ms)`
       : `[PASS] idle p95 (${avgP95} ms) <= 60% target (${target} ms)`;
 
-    console.log(`${code.padEnd(20)} p50: ${avgP50.toString().padStart(4)} ms | p95: ${avgP95.toString().padStart(4)} ms | target: ${target.toString().padStart(4)} ms | ${status}`);
+    console.log(`${code.padEnd(22)} p50: ${avgP50.toString().padStart(4)} ms | p95: ${avgP95.toString().padStart(4)} ms | target: ${target.toString().padStart(4)} ms | ${status}`);
   }
 
   return { samples: iterations, results };

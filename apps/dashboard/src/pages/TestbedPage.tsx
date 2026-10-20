@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import QRCode from '@/lib/qrcode';
+import QRCode from 'qrcode';
 import { slicesApi, testbedApi, type TestbedStatus, type TestbedDevice } from '@/api/resources';
 import type { Slice } from '@/types/api';
 import { useTelemetry, useCapacity } from '@/hooks/useLiveData';
@@ -83,7 +83,7 @@ export function TestbedPage() {
 
     const joinTag = selectedSlice.tags.find((t) => t.startsWith('join:'));
     const joinCode = joinTag ? joinTag.slice(5) : selectedSlice.code.slice(0, 6).toUpperCase();
-    const portalUrl = `http://${selectedLanIp}:8080/?code=${joinCode}`;
+    const portalUrl = `http://${selectedLanIp}:8080/join?code=${joinCode}`;
 
     QRCode.toDataURL(portalUrl, { width: 220, margin: 1, color: { dark: '#0f172a', light: '#ffffff' } })
       .then((url: string) => setQrCodeUrl(url))
@@ -240,9 +240,10 @@ export function TestbedPage() {
                 onChange={(e) => setSelectedLanIp(e.target.value)}
                 className="bg-surface-elevated border border-border rounded px-2 py-1 text-xs text-text font-mono flex-1"
               >
-                {testbedStatus?.lanIps?.map((net: { ip: string; isHotspot: boolean; interface: string }) => (
+                {testbedStatus?.lanIps?.map((net: { ip: string; isHotspot: boolean; interface: string; virtual?: boolean }) => (
                   <option key={net.ip} value={net.ip}>
-                    {net.ip} ({net.isHotspot ? 'Hotspot' : net.interface})
+                    {net.ip} ({net.isHotspot ? 'Hotspot' : net.interface}
+                    {net.virtual ? ' — virtual, phones cannot reach it' : ''})
                   </option>
                 ))}
                 {(!testbedStatus?.lanIps || testbedStatus.lanIps.length === 0) && (

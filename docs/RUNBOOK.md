@@ -82,9 +82,9 @@ Have participants or helpers connect their smartphones to the laptop's Mobile Ho
 ### Act 2: The Rogue Best-Effort Slice (TC2)
 1. On the **Canteen Phone**, tap **Flood (200%)** (requesting 280 kbps).
 2. **Observe Gateway Shaper:**
-   - Canteen's live throughput climbs to exactly **140 kbps** and flatlines.
+   - Canteen's live throughput climbs to its **140 kbps** baseline limit and flatlines.
    - The token bucket tail-drops the excess 140 kbps locally in Canteen's queue.
-   - **Explain to Evaluator:** "The shaper enforces slice limits at the gateway without needing arbitration because the total carried load ($874\text{ kbps}$) still fits within our 950 kbps link."
+   - **Explain to Evaluator:** "The shaper enforces slice limits at the gateway without needing arbitration because the total carried load ($\approx 877\text{ kbps}$) still fits within our 950 kbps link."
 
 ### Act 3: Lunch-Hour Contention & CBHA Arbitration (TC3)
 1. Increase load across non-critical slices:
@@ -92,30 +92,31 @@ Have participants or helpers connect their smartphones to the laptop's Mobile Ho
    - Office IT: **Peak (100%)** ($320\text{ kbps}$)
    - Security CCTV: **Peak (100%)** ($240\text{ kbps}$)
    - Warehouse: **Busy (80%)** ($128\text{ kbps}$)
-2. **Observe Contention Trigger (within 4 seconds):**
-   - Demand reaches $1,309\text{ kbps}$ ($137\%$ of link capacity).
+2. **Observe Contention Trigger (within ~4 seconds):**
+   - Demand reaches $\approx 1,309\text{ kbps}$ ($138\%$ of link capacity).
    - Dashboard flashes **`CONTENTION DETECTED: SEVERE`**.
-   - CBHA solver executes quadratic harm minimization.
+   - CBHA solver executes marginal-harm water-filling optimization.
 3. **Observe Arbitration Outcome:**
-   - **Clinic (Patient Telemetry):** Zero degradation. Limit remains strictly at **60 kbps**.
-   - **Factory:** Preserved at baseline ($380\text{ kbps}$).
+   - **Clinic (Patient Telemetry):** Zero degradation. Limit remains strictly at **60 kbps** (exempt from cuts).
    - **Canteen:** Throttled down to its contractual floor (**28 kbps**, $-80\%$ degradation).
-   - **Office IT:** Scaled down towards $220\text{ kbps}$.
+   - **Office IT, CCTV, Warehouse:** Proportionally degraded based on downtime cost and compliance ceilings.
+   - **Factory:** Preserved at baseline because cheaper slices absorb the needed cut.
 4. **Observe Phone Screen (Canteen):**
    - The Canteen portal displays an amber degradation banner:
      *`⚠️ Degraded by CBHA — Limit lowered from 140 to 28 kbps to protect critical enterprise operations (Decision ARB-XXXX)`*.
 
 ### Act 4: The Slicing Isolation Invariant (TC4 & TC5)
-1. Highlight to the evaluator that throughout the entire contention storm, **Clinic packet loss remained at 0%** and latency remained under target.
-2. Tap **Step-Down Recovery (TC5)** on the dashboard.
-3. Observe contention close after 3 consecutive clear samples, restoring all slices smoothly to their baseline limits.
+1. Highlight to the evaluator that once CBHA arbitration takes effect, **Clinic packet loss returns to 0%** and latency falls well within its SLA target (< 150 ms).
+2. Tap **Step-Down Recovery (TC5)** on the dashboard (returning demand to 55%).
+3. Observe contention close after 3 consecutive clear samples. Automatic recovery is scheduled per department policy (2–30 min), or tap **Override** on the dashboard to instantly restore all slices to their baseline limits.
 
 ### Act 5: Empirical A/B Proof (TC6)
 1. On the dashboard, toggle **Automatic Arbitration to OFF**.
-2. Trigger the lunch-hour rush.
-3. Show the live chart: without arbitration, the shared root queue overflows, **causing Clinic and Factory latency to breach SLA limits (> 450 ms)**.
-4. Toggle **Automatic Arbitration back to ON**.
-5. Show how CBHA instantly de-congests the bottleneck and recovers mission-critical SLAs.
+2. Trigger the lunch-hour rush. Start an experiment recording named `TC6-OFF`.
+3. Show the live chart: without arbitration, the shared root queue overflows, **causing Clinic and Factory latency to breach SLA limits (> 500 ms)** with measurable packet loss.
+4. Stop `TC6-OFF`. Toggle **Automatic Arbitration back to ON**. Start recording named `TC6-ON`.
+5. **Wait ~25 s** for the root queue to drain and reach steady-state.
+6. Show how CBHA instantly de-congests the bottleneck, restoring mission-critical latency (~29 ms) and 0% loss.
 
 ---
 

@@ -1,3 +1,13 @@
+/** Largest chunk the scheduler queues. */
+export const MAX_CHUNK_BYTES = 1024;
+
+/**
+ * A bucket must hold at least one maximum-size chunk, like a real bucket's depth is at least one
+ * MTU. With depth = 0.1 s of rate, a slice cut to 28 kbps holds only 350 bytes: a 1 KB chunk at
+ * the head of its queue could never be sent and would block the queue, probes included.
+ */
+const MIN_BURST_BYTES = MAX_CHUNK_BYTES;
+
 export class TokenBucket {
   private rateBps: number;
   private burstBytes: number;
@@ -5,13 +15,13 @@ export class TokenBucket {
 
   constructor(rateKbps: number, burstDurationS = 0.1, startFull = true) {
     this.rateBps = (rateKbps * 1000) / 8; // bytes per second
-    this.burstBytes = Math.max(64, this.rateBps * burstDurationS);
+    this.burstBytes = Math.max(MIN_BURST_BYTES, this.rateBps * burstDurationS);
     this.tokens = startFull ? this.burstBytes : 0;
   }
 
   public setRateKbps(rateKbps: number, burstDurationS = 0.1): void {
     this.rateBps = (rateKbps * 1000) / 8;
-    this.burstBytes = Math.max(64, this.rateBps * burstDurationS);
+    this.burstBytes = Math.max(MIN_BURST_BYTES, this.rateBps * burstDurationS);
     if (this.tokens > this.burstBytes) {
       this.tokens = this.burstBytes;
     }

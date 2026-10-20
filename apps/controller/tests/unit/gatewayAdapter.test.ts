@@ -11,7 +11,7 @@ describe('GatewayTelemetryAdapter Unit Tests', () => {
   let adapter: GatewayTelemetryAdapter;
 
   let mockStatsHandler: (req: http.IncomingMessage, res: http.ServerResponse) => void;
-  let mockLimitHandler: (req: http.IncomingMessage, res: http.ServerResponse) => void;
+  let mockLimitHandler: ((req: http.IncomingMessage, res: http.ServerResponse) => void) | undefined;
 
   beforeEach(async () => {
     adapter = new GatewayTelemetryAdapter({
@@ -102,7 +102,7 @@ describe('GatewayTelemetryAdapter Unit Tests', () => {
   });
 
   afterEach(async () => {
-    await new Promise((resolve) => server.close(() => resolve()));
+    await new Promise<void>((resolve) => server.close(() => resolve()));
   });
 
   it('correctly maps gateway stats to SliceTelemetry', async () => {

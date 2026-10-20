@@ -49,6 +49,12 @@ export class ForwardProxyServer {
     });
   }
 
+  /** Join page on the gateway address this device reached, so the hint works on any network. */
+  private joinUrl(socket: net.Socket): string {
+    const local = (socket.localAddress || '127.0.0.1').replace(/^::ffff:/, '');
+    return `http://${local}:${process.env.GATEWAY_LAN_PORT || '8080'}/join`;
+  }
+
   private getClientIp(socket: net.Socket): string {
     const raw = socket.remoteAddress || '127.0.0.1';
     return raw.replace(/^::ffff:/, '');
@@ -61,7 +67,8 @@ export class ForwardProxyServer {
     if (!dev) {
       res.statusCode = 403;
       res.setHeader('Content-Type', 'text/html');
-      res.end(`<html><body><h3>Access Denied</h3><p>Join a slice first at <a href="http://192.168.137.1:8080/join">http://192.168.137.1:8080/join</a></p></body></html>`);
+      const join = this.joinUrl(req.socket as net.Socket);
+      res.end(`<html><body><h3>Access Denied</h3><p>Join a slice first at <a href="${join}">${join}</a></p></body></html>`);
       return;
     }
 
@@ -93,7 +100,9 @@ export class ForwardProxyServer {
     const dev = this.deviceRegistry.getDeviceByIp(ip);
 
     if (!dev) {
-      clientSocket.write('HTTP/1.1 403 Forbidden\r\nContent-Type: text/plain\r\n\r\nJoin a slice first at http://192.168.137.1:8080/join\r\n');
+      clientSocket.write(
+        `HTTP/1.1 403 Forbidden\r\nContent-Type: text/plain\r\n\r\nJoin a slice first at ${this.joinUrl(clientSocket)}\r\n`,
+      );
       clientSocket.end();
       return;
     }

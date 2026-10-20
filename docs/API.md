@@ -77,7 +77,7 @@ Registers or updates the full slice catalogue on the gateway.
 ---
 
 ### 1.4 `GET /v1/stats`
-Returns aggregated real-time traffic and probe metrics per slice for the last 2-second window.
+Returns each slice's traffic and probe metrics for the **last completed** measurement window. The gateway closes a window every `GATEWAY_STATS_WINDOW_MS` (default 2 s) on its own clock, and rates are averaged over the real elapsed time. This call is read-only: any number of readers (controller, experiment recorder, curl) get the same numbers. `null` means unknown, because no probe was answered in the window.
 
 **Response (200 OK):**
 ```json
@@ -237,10 +237,10 @@ Real-time bidirectional channel:
 
 ## 3. Forward Proxy Server (`0.0.0.0:8888`)
 
-Transparent HTTP/HTTPS forward proxy for routing real mobile application traffic through slice rate limiters:
-- **HTTP Requests:** Standard proxy requests (`GET http://example.com/`).
-- **HTTPS Tunnels:** HTTP `CONNECT example.com:443` tunnels with bidirectional TCP backpressure pacing.
-- **Access Control:** Client IP must match an actively bound device in `deviceRegistry`; unknown IPs receive an HTTP 403 join prompt.
+Optional HTTP/HTTPS forward proxy, off by default (`GATEWAY_PROXY_ENABLED=false`). **It does not shape traffic yet**: see `docs/LIMITATIONS.md` §2.3.
+- **HTTP requests:** standard proxy requests (`GET http://example.com/`), forwarded unshaped.
+- **HTTPS tunnels:** `CONNECT example.com:443`, piped through unshaped.
+- **Access control:** the client IP must belong to a device that has joined a slice. Unknown IPs get HTTP 403 with a link to the join page on the address they reached.
 
 ---
 

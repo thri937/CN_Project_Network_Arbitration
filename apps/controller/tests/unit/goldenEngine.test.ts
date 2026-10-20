@@ -5,7 +5,7 @@ import {
   type ArbitrationCandidate,
   type ArbitrationRequest,
 } from '@/domain/arbitration/types';
-import { defaultPolicyDefinition, resolvePolicy, type Policy } from '@/models/policy.model';
+import { defaultPolicyDefinition, resolvePolicy, type Policy, type ResolvedPolicy } from '@/models/policy.model';
 import {
   DepartmentCriticality,
   RecoveryTolerance,
@@ -16,9 +16,11 @@ import { computeBusinessPriority } from '@/domain/policyEngine';
 import { RECOVERY_TOLERANCE_PROFILE } from '@/constants/tunables';
 
 describe('Golden Engine Tests (TC2, TC3, TC4 on 7-slice testbed)', () => {
-  const policy: Policy = resolvePolicy({
+  const policy: ResolvedPolicy = resolvePolicy({
     ...defaultPolicyDefinition(),
     id: 'POL-ARB-GOLDEN',
+    createdAt: '2026-01-01T00:00:00.000Z',
+    updatedAt: '2026-01-01T00:00:00.000Z',
     version: 1,
     arbitration: {
       ...defaultPolicyDefinition().arbitration,
@@ -207,6 +209,7 @@ describe('Golden Engine Tests (TC2, TC3, TC4 on 7-slice testbed)', () => {
       settings: policy.arbitration,
       policyId: policy.policyId,
       policyRevision: policy.revision,
+      policyName: policy.policyName,
     };
   };
 

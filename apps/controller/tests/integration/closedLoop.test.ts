@@ -1,6 +1,12 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import http from 'node:http';
-import { createGateway, type GatewayInstance } from '../../../gateway/src/index.js';
+// The gateway is an ES module built by its own tsconfig. It is loaded at runtime (vitest
+// transpiles it) so its sources stay out of this CommonJS project's type check.
+const GATEWAY_ENTRY = '../../../gateway/src/index.js';
+interface GatewayHandle {
+  stop: () => Promise<void>;
+}
+type GatewayModule = { createGateway: () => Promise<GatewayHandle> };
 import { buildContainer, type AppContainer } from '@/bootstrap';
 import { env, TelemetryProviderKind } from '@/config/env';
 import { SYSTEM_ACTOR } from '@/types/common';
@@ -13,7 +19,7 @@ import {
 } from '@/constants/enums';
 
 describe('Closed Loop Integration Test (Controller + Gateway + Simulated Slices)', () => {
-  let gateway: GatewayInstance;
+  let gateway: GatewayHandle;
   let container: AppContainer;
   const gwPort = 8092;
   const sbPort = 9092;
@@ -34,6 +40,7 @@ describe('Closed Loop Integration Test (Controller + Gateway + Simulated Slices)
     process.env.CONTENTION_SCAN_MS = '500';
 
     // 2. Start Gateway
+    const { createGateway } = (await import(GATEWAY_ENTRY)) as GatewayModule;
     gateway = await createGateway();
 
     // 3. Start Controller container

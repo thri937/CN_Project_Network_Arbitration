@@ -352,7 +352,7 @@ export interface TestbedStatus {
   gatewayOk: boolean;
   gatewayUptimeS: number;
   capacity: { totalMbps: number; reservedMbps: number; offeredMbps: number } | null;
-  lanIps: { interface: string; ip: string; isHotspot: boolean }[];
+  lanIps: { interface: string; ip: string; isHotspot: boolean; virtual?: boolean }[];
   bandwidthUnit: string;
   autoArbitration: boolean;
   activeExperiment: {

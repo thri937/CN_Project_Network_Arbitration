@@ -56,6 +56,7 @@ export async function createGateway(): Promise<GatewayInstance> {
     scheduler,
     deviceRegistry,
     probeManager,
+    statsWindowMs: parseInt(process.env.GATEWAY_STATS_WINDOW_MS || '2000', 10),
     onOperatorDemand: (sliceCode, demandKbps, mode) => {
       portalServerRef?.handleOperatorDemand(sliceCode, demandKbps, mode);
     },

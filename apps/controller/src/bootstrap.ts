@@ -405,6 +405,7 @@ export async function buildContainer(options: BuildOptions = {}): Promise<AppCon
       slices: repositories.slices,
       telemetryService: telemetry,
       auditService: audit,
+      contention,
     }),
   };
 

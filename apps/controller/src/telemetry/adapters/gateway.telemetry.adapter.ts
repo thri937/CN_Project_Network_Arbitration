@@ -23,7 +23,7 @@ export interface GatewayAdapterConfig {
   timeoutMs?: number;
 }
 
-interface GatewaySliceStats {
+export interface GatewaySliceStats {
   code: string;
   atMs: number;
   demandKbps: number;
@@ -143,6 +143,11 @@ export class GatewayTelemetryAdapter implements INetworkTelemetryPort, SlaAwareP
     log.info({ count: slices.length }, 'pushed slice catalogue to gateway');
   }
 
+  /** The gateway's last completed measurement window, exactly as measured (nulls = unknown). */
+  public async readStats(): Promise<GatewaySliceStats[]> {
+    return this.requestJson<GatewaySliceStats[]>('GET', '/v1/stats');
+  }
+
   public async sample(request: TelemetrySampleRequest): Promise<SliceTelemetry[]> {
     let statsList: GatewaySliceStats[] = [];
     let isGatewayDown = false;
@@ -235,11 +240,13 @@ export class GatewayTelemetryAdapter implements INetworkTelemetryPort, SlaAwareP
         utilisation,
         health,
         healthScore,
+        // Unknown values (no probe answered in the window) are left out rather than shown as 0,
+        // which would read as perfect latency or a total outage.
         extra: {
-          p50Ms: stats.latencyP50Ms ?? 0,
+          ...(stats.latencyP50Ms !== null ? { p50Ms: stats.latencyP50Ms } : {}),
+          ...(stats.availabilityPct !== null ? { availabilityPct: stats.availabilityPct } : {}),
           queueMs: stats.queueMs,
           droppedKbps: stats.droppedKbps,
-          availabilityPct: stats.availabilityPct ?? 0,
           activeDevices: stats.activeDevices,
           saturated: stats.saturated ? 1 : 0,
         },

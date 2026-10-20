@@ -129,6 +129,78 @@ describe('Gateway Unit Tests', () => {
       });
     });
 
+    it('keeps a deeply cut slice moving: 28 kbps limit with 10x demand still carries 28 kbps and answers probes', () => {
+      // A cut to the Canteen floor. At 0.1 s of depth the bucket would hold 350 bytes, less
+      // than one 1 KB chunk: the head chunk could never be sent and blocked the queue forever.
+      const scheduler = new ShaperScheduler({
+        totalCapacityKbps: 1000,
+        reservedCapacityKbps: 50,
+        tickMs: 20,
+        queueSeconds: 0.5,
+        rootDiscipline: 'fifo',
+      });
+      scheduler.registerSlice({
+        ...dummySlices[0]!,
+        code: 'canteen',
+        baselineKbps: 140,
+        floorKbps: 28,
+        currentLimitKbps: 140,
+      });
+      scheduler.updateSliceLimit('canteen', 28);
+
+      let sentBytes = 0;
+      const res: any = { write: (c: Buffer) => ((sentBytes += c.length), true), on: () => {}, end: () => {} };
+      scheduler.addSession(
+        new LoadSession({
+          sessionId: 's-canteen',
+          deviceId: 'd-canteen',
+          sliceCode: 'canteen',
+          initialRateKbps: 280,
+          mode: 'local',
+          res,
+          onClose: () => {},
+        }),
+      );
+
+      // Uneven ticks, like Windows timers, make some arrivals full 1 KB chunks.
+      const dts = [0.02, 0.035, 0.05];
+      for (let i = 0; i < 60; i++) scheduler.step(dts[i % 3]!);
+
+      // Probe once a second, as a device does; a saturated tail-drop queue drops some of them.
+      // probeSeq carries the send time so the delay is measured on the virtual clock.
+      let nowMs = 0;
+      const delaysMs: number[] = [];
+      scheduler.onTransmitProbe = (chunk) => delaysMs.push(nowMs - (chunk.probeSeq ?? 0));
+
+      sentBytes = 0;
+      let elapsed = 0;
+      let nextProbeAt = 0;
+      for (let i = 0; elapsed < 10 - 1e-9; i++) {
+        if (elapsed >= nextProbeAt) {
+          scheduler.enqueueProbeChunk('canteen', {
+            sliceCode: 'canteen',
+            data: Buffer.alloc(64),
+            isProbe: true,
+            probeSeq: Math.round(elapsed * 1000),
+            enqueuedAtNs: 0n,
+          });
+          nextProbeAt += 1;
+        }
+        const dt = dts[i % 3]!;
+        nowMs = Math.round((elapsed + dt) * 1000);
+        scheduler.step(dt);
+        elapsed += dt;
+      }
+
+      const kbps = (sentBytes * 8) / (elapsed * 1000);
+      expect(Math.abs(kbps - 28) / 28).toBeLessThanOrEqual(0.05);
+
+      // Probes that get in wait about half a second (0.5 s of queue at 28 kbps), well inside
+      // the 2 s probe timeout.
+      expect(delaysMs.length).toBeGreaterThan(0);
+      expect(Math.max(...delaysMs)).toBeLessThan(1000);
+    });
+
     it('root link capacity (950 kbps) is never exceeded', () => {
       const scheduler = new ShaperScheduler({
         totalCapacityKbps: 1000,
