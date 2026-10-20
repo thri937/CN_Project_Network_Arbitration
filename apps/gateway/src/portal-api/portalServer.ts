@@ -53,8 +53,13 @@ export class PortalServer {
     this.scheduler = opts.scheduler;
     this.deviceRegistry = opts.deviceRegistry;
     this.probeManager = opts.probeManager;
-    this.staticDir =
-      opts.staticDir || path.resolve(__dirname, '../../../../portal/dist');
+    const candidates = [
+      opts.staticDir,
+      path.resolve(__dirname, '../../portal/dist'),
+      path.resolve(__dirname, '../../../portal/dist'),
+      path.resolve(process.cwd(), 'apps/portal/dist'),
+    ].filter(Boolean) as string[];
+    this.staticDir = candidates.find((d) => fs.existsSync(d)) || path.resolve(__dirname, '../../portal/dist');
     this.internetSourceUrl =
       opts.internetSourceUrl || 'https://speed.cloudflare.com/__down?bytes=25000000';
 
