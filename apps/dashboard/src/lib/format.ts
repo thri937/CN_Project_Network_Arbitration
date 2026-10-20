@@ -32,15 +32,15 @@ export function formatBandwidth(mbps: number | null | undefined, precision?: num
   if (mbps === null || mbps === undefined || !Number.isFinite(mbps)) return '—';
 
   if (Math.abs(mbps) >= 1000) {
-    return `${(mbps / 1000).toFixed(precision ?? 2)} Gbps`;
+    return `${(mbps / 1000).toFixed(precision ?? 2)} Mbps`;
   }
-  return `${mbps.toFixed(precision ?? (mbps < 10 ? 1 : 0))} Mbps`;
+  return `${Math.round(mbps)} kbps`;
 }
 
 /** Bandwidth without a unit suffix, for a table column with the unit in its header. */
 export function formatBandwidthValue(mbps: number | null | undefined): string {
   if (mbps === null || mbps === undefined || !Number.isFinite(mbps)) return '—';
-  return mbps >= 1000 ? (mbps / 1000).toFixed(2) : mbps.toFixed(0);
+  return mbps >= 1000 ? (mbps / 1000).toFixed(2) : Math.round(mbps).toString();
 }
 
 export function formatPercent(value: number | null | undefined, precision = 1): string {
