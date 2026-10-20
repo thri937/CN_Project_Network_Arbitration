@@ -1,5 +1,5 @@
 import os from 'node:os';
-import qrcode from 'qrcode';
+import qrcode from '../apps/dashboard/src/lib/qrcode.ts';
 
 async function main() {
   console.log('=== CN Real Network Arbitration Testbed — LAN Info ===\n');
