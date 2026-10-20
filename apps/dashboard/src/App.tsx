@@ -19,9 +19,6 @@ import type { UserRole } from '@/types/api';
  * the required role tells them exactly what to ask for.
  */
 
-const DashboardPage = lazy(() =>
-  import('@/pages/DashboardPage').then((m) => ({ default: m.DashboardPage })),
-);
 const TestbedPage = lazy(() =>
   import('@/pages/TestbedPage').then((m) => ({ default: m.TestbedPage })),
 );
@@ -85,12 +82,12 @@ export function App(): JSX.Element {
           index
           element={
             <Suspense fallback={<LoadingState />}>
-              <DashboardPage />
+              <TestbedPage />
             </Suspense>
           }
         />
 
-        <Route path="testbed" element={<Lazy><TestbedPage /></Lazy>} />
+        <Route path="testbed" element={<Navigate to="/" replace />} />
         <Route path="monitoring" element={<Lazy><MonitoringPage /></Lazy>} />
         <Route path="slices" element={<Lazy><SlicesPage /></Lazy>} />
         <Route path="departments" element={<Lazy><DepartmentsPage /></Lazy>} />

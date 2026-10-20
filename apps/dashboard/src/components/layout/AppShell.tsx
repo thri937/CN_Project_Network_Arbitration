@@ -32,40 +32,24 @@ interface NavItem {
   minRole?: UserRole;
   /** Renders a live count or status dot beside the label. */
   indicator?: 'contention';
+  external?: boolean;
 }
 
 const NAV_SECTIONS: { heading: string; items: NavItem[] }[] = [
   {
-    heading: 'Operations',
+    heading: 'Real 5G Testbed',
     items: [
-      { to: '/', label: 'Dashboard', icon: Icons.dashboard },
-      { to: '/testbed', label: 'Testbed Topology', icon: Icons.network },
+      { to: '/', label: '5G Slice Testbed', icon: Icons.network },
+      { to: '/slices', label: 'Slice Contracts & Floors', icon: Icons.slices },
       { to: '/monitoring', label: 'Runtime Monitoring', icon: Icons.monitoring },
       { to: '/contention', label: 'Contention Events', icon: Icons.contention, indicator: 'contention' },
       { to: '/arbitration', label: 'Arbitration Decisions', icon: Icons.arbitration },
     ],
   },
   {
-    heading: 'Configuration',
+    heading: 'Client Devices',
     items: [
-      { to: '/slices', label: 'Slices', icon: Icons.slices },
-      { to: '/departments', label: 'Departments', icon: Icons.departments },
-      { to: '/policies', label: 'Business Policies', icon: Icons.policy },
-    ],
-  },
-  {
-    heading: 'Insight',
-    items: [
-      { to: '/reports', label: 'Reports', icon: Icons.reports },
-      { to: '/analytics', label: 'Analytics', icon: Icons.analytics },
-      { to: '/audit', label: 'Audit Logs', icon: Icons.audit, minRole: 'ADMIN' },
-    ],
-  },
-  {
-    heading: 'Administration',
-    items: [
-      { to: '/users', label: 'User Management', icon: Icons.users, minRole: 'ADMIN' },
-      { to: '/settings', label: 'Settings', icon: Icons.settings },
+      { to: 'http://localhost:5174', label: 'Client Slice Portal ↗', icon: Icons.network, external: true },
     ],
   },
 ];
@@ -136,9 +120,9 @@ function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
             <Icons.network className="h-5 w-5" />
           </div>
           <div className="min-w-0">
-            <div className="text-sm font-semibold leading-tight text-content">Arbitration</div>
+            <div className="text-sm font-semibold leading-tight text-content">5G Slice Testbed</div>
             <div className="text-[10px] uppercase tracking-wider text-content-subtle">
-              Operations Centre
+              Real-Network Arbitration
             </div>
           </div>
           <button
@@ -164,29 +148,41 @@ function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
                 <ul className="space-y-0.5">
                   {visible.map((item) => (
                     <li key={item.to}>
-                      <NavLink
-                        to={item.to}
-                        end={item.to === '/'}
-                        onClick={onClose}
-                        className={({ isActive }) =>
-                          cn(
-                            'flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition-colors',
-                            isActive
-                              ? 'bg-brand/12 font-medium text-brand'
-                              : 'text-content-muted hover:bg-surface-sunken hover:text-content',
-                          )
-                        }
-                      >
-                        <item.icon className="h-[18px] w-[18px] shrink-0" />
-                        <span className="truncate">{item.label}</span>
+                      {item.external ? (
+                        <a
+                          href={item.to}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm text-cyan-400 hover:bg-surface-sunken hover:text-cyan-300 transition-colors font-medium"
+                        >
+                          <item.icon className="h-[18px] w-[18px] shrink-0" />
+                          <span className="truncate">{item.label}</span>
+                        </a>
+                      ) : (
+                        <NavLink
+                          to={item.to}
+                          end={item.to === '/'}
+                          onClick={onClose}
+                          className={({ isActive }) =>
+                            cn(
+                              'flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition-colors',
+                              isActive
+                                ? 'bg-brand/12 font-medium text-brand'
+                                : 'text-content-muted hover:bg-surface-sunken hover:text-content',
+                            )
+                          }
+                        >
+                          <item.icon className="h-[18px] w-[18px] shrink-0" />
+                          <span className="truncate">{item.label}</span>
 
-                        {item.indicator === 'contention' && contention?.open && (
-                          <span className="ml-auto flex h-2 w-2 shrink-0">
-                            <span className="absolute inline-flex h-2 w-2 animate-ping rounded-full bg-critical opacity-70" />
-                            <span className="relative inline-flex h-2 w-2 rounded-full bg-critical" />
-                          </span>
-                        )}
-                      </NavLink>
+                          {item.indicator === 'contention' && contention?.open && (
+                            <span className="ml-auto flex h-2 w-2 shrink-0">
+                              <span className="absolute inline-flex h-2 w-2 animate-ping rounded-full bg-critical opacity-70" />
+                              <span className="relative inline-flex h-2 w-2 rounded-full bg-critical" />
+                            </span>
+                          )}
+                        </NavLink>
+                      )}
                     </li>
                   ))}
                 </ul>
