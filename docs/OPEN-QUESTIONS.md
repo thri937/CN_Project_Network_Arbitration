@@ -13,4 +13,8 @@ This document logs design decisions, hardware/OS constraints, and items requirin
 - In Node.js 24 running under restricted Windows tokens or sandboxed execution, `fs.realpathSync.native` may encounter `EPERM`. A clean preload patch (`scripts/patch-realpath.cjs`) safely bridges `realpathSync.native` to `realpathSync`, ensuring Vitest and build tooling function without error.
 
 ## 4. Single Executable Application (Node SEA)
-- Node SEA binary creation is supported via `npm run build:agent:exe`. If `postject` or Windows binary manipulation is restricted, the headless agent can be run directly via `npx tsx apps/agent/src/index.ts`.
+- Node SEA binary creation is supported via `npm run build:agent:exe`. The automated `postject` injection succeeded and generated `dist/slice-agent.exe`. In environments where executable creation is restricted, `npx tsx apps/agent/src/index.ts` is available as a drop-in fallback.
+
+## 5. WSL Availability and Linux Kernel TC (Phase 8 Optional)
+- As noted in the system environment, Windows Subsystem for Linux (WSL) is installed and available.
+- While the native Windows 11 application-layer token bucket shaper in `apps/gateway` fully satisfies all testbed requirements without WSL, an optional Linux `tc-htb` adapter can be deployed inside WSL or native Linux for L3 kernel queueing discipline enforcement if desired.
