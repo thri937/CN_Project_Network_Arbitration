@@ -57,6 +57,7 @@ import {
   type TelemetryController,
 } from '@/controllers/telemetry.controller';
 import { createUserController, type UserController } from '@/controllers/user.controller';
+import { createTestbedController } from '@/controllers/testbed.controller';
 import { createLogger } from '@/utils/logger';
 
 const log = createLogger('bootstrap');
@@ -398,6 +399,13 @@ export async function buildContainer(options: BuildOptions = {}): Promise<AppCon
       scheduler,
       autoArbitration,
     }),
+    testbed: createTestbedController({
+      autoArbitration,
+      telemetryProvider,
+      slices: repositories.slices,
+      telemetryService: telemetry,
+      auditService: audit,
+    }),
   };
 
   const extraMounts: { path: string; router: Router }[] = [];
@@ -504,6 +512,39 @@ export async function buildContainer(options: BuildOptions = {}): Promise<AppCon
         return;
       }
       scheduler.start();
+
+      if (telemetryProvider.name === 'gateway' && (telemetryProvider as any).pushCatalogue) {
+        try {
+          const allSlices = await repositories.slices.listAll();
+          if (allSlices.length > 0) {
+            const cat = allSlices.map((s) => {
+              const jc = s.tags.find((t) => t.startsWith('join:'))?.slice(5) || 'JOIN01';
+              return {
+                code: s.code,
+                name: s.name,
+                department: s.departmentId,
+                sNssai: s.snssai,
+                profile: s.profile,
+                baselineKbps: s.baselineAllocatedMbps,
+                floorKbps: s.minGuaranteedMbps,
+                burstKbps: s.maxBurstMbps,
+                currentLimitKbps: s.baselineAllocatedMbps,
+                slaTargets: {
+                  latencyMs: s.slaTargets.maxLatencyMs,
+                  jitterMs: s.slaTargets.maxJitterMs,
+                  lossPct: s.slaTargets.maxPacketLossPercent,
+                  minThroughputKbps: s.slaTargets.minThroughputMbps,
+                  availabilityPct: s.slaTargets.availabilityPercent,
+                },
+                joinCode: jc,
+              };
+            });
+            await (telemetryProvider as any).pushCatalogue(cat);
+          }
+        } catch (err: any) {
+          log.warn({ error: err.message }, 'gateway catalogue sync deferred until gateway online');
+        }
+      }
     },
 
     attachRealtime(server: http.Server): void {

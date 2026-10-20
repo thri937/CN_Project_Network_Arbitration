@@ -1,4 +1,5 @@
 import type { Request, Response } from 'express';
+import { env } from '@/config/env';
 import { CapacityTunables } from '@/constants/tunables';
 import type { IClock } from '@/interfaces/clock.port';
 import type { CapacityService } from '@/services/capacity.service';
@@ -31,6 +32,7 @@ export function createCapacityController(deps: {
       ok(req, res, {
         capacity: state,
         admission: headroom,
+        bandwidthUnit: env.BANDWIDTH_UNIT,
         thresholds: {
           warningUtilisation: CapacityTunables.WARNING_UTILISATION,
           criticalUtilisation: CapacityTunables.CRITICAL_UTILISATION,

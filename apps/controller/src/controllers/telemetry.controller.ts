@@ -6,7 +6,7 @@ import type { TelemetryRepository } from '@/repositories/telemetry.repository';
 import type { TelemetryService } from '@/services/telemetry.service';
 import { isSyntheticProvider, type FaultKind } from '@/telemetry';
 import { asyncHandler } from '@/utils/asyncHandler';
-import { NotFoundError, NotImplementedError } from '@/utils/errors';
+import { ConflictError, NotFoundError, NotImplementedError } from '@/utils/errors';
 import { ok, paginated } from '@/utils/http';
 
 /**
@@ -36,7 +36,7 @@ export function createTelemetryController(deps: {
   const requireSynthetic = () => {
     const provider = deps.telemetry.networkProvider;
     if (!isSyntheticProvider(provider)) {
-      throw new NotImplementedError(
+      throw new ConflictError(
         `Fault injection is only available with the synthetic telemetry provider ` +
           `(active provider: '${provider.name}'). Against a live network, drive load with a traffic generator.`,
       );

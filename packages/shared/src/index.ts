@@ -45,7 +45,7 @@ export const SNssaiSchema = z.object({
 });
 export type SNssai = z.infer<typeof SNssaiSchema>;
 
-export const SliceProfileSchema = z.enum(['URLLC', 'eMBB', 'mMTC']);
+export const SliceProfileSchema = z.enum(['URLLC', 'eMBB', 'mMTC', 'EMBB', 'MMTC', 'V2X']);
 export type SliceProfile = z.infer<typeof SliceProfileSchema>;
 
 export const SlaTargetsSchema = z.object({

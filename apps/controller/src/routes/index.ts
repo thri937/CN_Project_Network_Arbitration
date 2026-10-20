@@ -15,6 +15,7 @@ import { buildReportRouter, buildSettingsRouter } from './settings.routes';
 import { buildSliceRouter } from './slice.routes';
 import { buildTelemetryRouter } from './telemetry.routes';
 import { buildUserRouter } from './user.routes';
+import { buildTestbedRouter } from './testbed.routes';
 
 /**
  * API router assembly.
@@ -42,6 +43,7 @@ export function buildApiRouter(container: AppContainer): Router {
     'notifications',
     'settings',
     'reports',
+    'testbed',
   ];
 
   /** Service discovery document — lets the SPA verify it is talking to a compatible API. */
@@ -160,6 +162,14 @@ export function buildApiRouter(container: AppContainer): Router {
     }),
   );
 
+
+  router.use(
+    '/testbed',
+    buildTestbedRouter({
+      controller: (container.controllers as any).testbed,
+      auth: container.middleware.auth,
+    }),
+  );
 
   return router;
 }

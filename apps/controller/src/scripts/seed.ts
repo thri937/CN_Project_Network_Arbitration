@@ -12,34 +12,18 @@ import { buildContainer } from '@/bootstrap';
 import type { CreateDepartmentPayload } from '@/models/department.model';
 import type { CreateSlicePayload } from '@/models/slice.model';
 import { SYSTEM_ACTOR } from '@/types/common';
-import { OFFERED_CAPACITY_MBPS } from '@/config/env';
+import { env, OFFERED_CAPACITY_MBPS } from '@/config/env';
 
 /**
- * Seed a realistic enterprise network.
+ * Seed 7-Department / 7-Slice Real Network Testbed.
  *
- * DESIGNED TO PRODUCE INTERESTING ARBITRATION, NOT JUST DATA.
- * ==========================================================
- * The scenario is a mid-sized manufacturer with an on-site clinic. It is constructed so
- * that the platform's distinguishing behaviours are visible within minutes of first run:
- *
- *   • Baselines OVERSUBSCRIBE the network (14.8 Gbps of baseline against 9.5 Gbps
- *     offered), so contention arises naturally from the diurnal load curve rather than
- *     needing fault injection.
- *   • Guaranteed floors sum to well under capacity (5.18 Gbps vs 9.5 Gbps), so arbitration
- *     always has a feasible solution. That is the admission-control invariant, demonstrated by construction.
- *   • Clinic is LIFE_SAFETY — structurally exempt. It will never be degraded, no
- *     matter how severe the contention, which is the clearest demonstration that compliance
- *     is a constraint rather than a weight.
- *   • Canteen Signage is URLLC by network profile but BEST_EFFORT by business criticality (£15/min outage).
- *     A conventional QoS controller would protect it ahead of the eMBB-profiled Quality lab.
- *     This platform does the opposite — and that inversion is the whole thesis, visible on
- *     the dashboard on day one.
- *
- * Idempotent: re-running skips anything already present.
+ * Scaling factor: s = NETWORK_TOTAL_CAPACITY_MBPS / 10000.
+ * At 1000 kbps (1 Mbps), s = 0.1.
  */
+const s = env.NETWORK_TOTAL_CAPACITY_MBPS / 10000;
 
 interface SeedDepartment extends CreateDepartmentPayload {
-  slices: Omit<CreateSlicePayload, 'departmentId'>[];
+  slices: (Omit<CreateSlicePayload, 'departmentId'> & { joinCode: string })[];
 }
 
 const sla = (
@@ -52,7 +36,7 @@ const sla = (
   maxLatencyMs: latency,
   maxJitterMs: jitter,
   maxPacketLossPercent: loss,
-  minThroughputMbps: throughput,
+  minThroughputMbps: Math.round(throughput * s),
   availabilityPercent: availability,
 });
 
@@ -77,16 +61,15 @@ const SCENARIO: SeedDepartment[] = [
     slices: [
       {
         name: 'Patient Telemetry',
-        // URLLC by network profile AND critical by business. They agree here — which makes
-        // the cases where they disagree easier to see by contrast.
         snssai: { sst: 2, sd: '000101' },
         profile: SliceProfile.URLLC,
-        baselineAllocatedMbps: 600,
-        minGuaranteedMbps: 400,
-        maxBurstMbps: 900,
-        slaTargets: sla(5, 1, 0.001, 400, 99.999),
+        baselineAllocatedMbps: Math.round(600 * s),
+        minGuaranteedMbps: Math.round(400 * s),
+        maxBurstMbps: Math.round(900 * s),
+        slaTargets: sla(150, 25, 0.1, 400, 99.999),
         site: 'Building A',
-        tags: ['telemetry', 'life-safety'],
+        tags: ['telemetry', 'life-safety', 'join:CLN101'],
+        joinCode: 'CLN101',
       },
     ],
   },
@@ -110,26 +93,16 @@ const SCENARIO: SeedDepartment[] = [
     tags: ['ot', 'production'],
     slices: [
       {
-        name: 'Motion Control',
+        name: 'Factory Automation',
         snssai: { sst: 2, sd: '000201' },
         profile: SliceProfile.URLLC,
-        baselineAllocatedMbps: 1200,
-        minGuaranteedMbps: 800,
-        maxBurstMbps: 1800,
-        slaTargets: sla(8, 2, 0.01, 700, 99.99),
+        baselineAllocatedMbps: Math.round(3800 * s),
+        minGuaranteedMbps: Math.round(1700 * s),
+        maxBurstMbps: Math.round(5800 * s),
+        slaTargets: sla(180, 30, 0.1, 1500, 99.99),
         site: 'Building C',
-        tags: ['ot', 'realtime'],
-      },
-      {
-        name: 'Machine Vision',
-        snssai: { sst: 1, sd: '000202' },
-        profile: SliceProfile.EMBB,
-        baselineAllocatedMbps: 2600,
-        minGuaranteedMbps: 900,
-        maxBurstMbps: 4000,
-        slaTargets: sla(30, 8, 0.2, 800, 99.9),
-        site: 'Building C',
-        tags: ['ot', 'vision'],
+        tags: ['ot', 'realtime', 'join:FAC201'],
+        joinCode: 'FAC201',
       },
     ],
   },
@@ -141,7 +114,6 @@ const SCENARIO: SeedDepartment[] = [
     businessImportance: 68,
     downtimeCostPerMinute: 1600,
     recoveryTolerance: RecoveryTolerance.LOW,
-    // REGULATED caps degradation at 20 %, so this is the binding constraint.
     maxAllowedDegradationPercent: 20,
     complianceLevel: ComplianceLevel.REGULATED,
     customerImpact: CustomerImpact.DIRECT,
@@ -153,16 +125,15 @@ const SCENARIO: SeedDepartment[] = [
     slices: [
       {
         name: 'Lab Instrumentation',
-        // eMBB profile: a conventional QoS controller would rank this BELOW Canteen
-        // Signage's URLLC profile. This platform ranks it far above, on business grounds.
         snssai: { sst: 1, sd: '000401' },
         profile: SliceProfile.EMBB,
-        baselineAllocatedMbps: 1800,
-        minGuaranteedMbps: 500,
-        maxBurstMbps: 2600,
-        slaTargets: sla(40, 10, 0.3, 450, 99.9),
+        baselineAllocatedMbps: Math.round(1800 * s),
+        minGuaranteedMbps: Math.round(500 * s),
+        maxBurstMbps: Math.round(2600 * s),
+        slaTargets: sla(500, 70, 3.0, 450, 99.9),
         site: 'Building B',
-        tags: ['lab'],
+        tags: ['lab', 'join:LAB401'],
+        joinCode: 'LAB401',
       },
     ],
   },
@@ -184,26 +155,16 @@ const SCENARIO: SeedDepartment[] = [
     tags: ['logistics'],
     slices: [
       {
-        name: 'AGV Fleet',
+        name: 'Warehouse Operations',
         snssai: { sst: 2, sd: '000301' },
         profile: SliceProfile.URLLC,
-        baselineAllocatedMbps: 900,
-        minGuaranteedMbps: 350,
-        maxBurstMbps: 1400,
-        slaTargets: sla(15, 4, 0.05, 300, 99.95),
+        baselineAllocatedMbps: Math.round(1600 * s),
+        minGuaranteedMbps: Math.round(550 * s),
+        maxBurstMbps: Math.round(2500 * s),
+        slaTargets: sla(250, 40, 0.5, 450, 99.95),
         site: 'Building D',
-        tags: ['agv'],
-      },
-      {
-        name: 'Warehouse IoT',
-        snssai: { sst: 3, sd: '000302' },
-        profile: SliceProfile.MMTC,
-        baselineAllocatedMbps: 700,
-        minGuaranteedMbps: 200,
-        maxBurstMbps: 1100,
-        slaTargets: sla(150, 40, 1.5, 150, 99.5),
-        site: 'Building D',
-        tags: ['iot'],
+        tags: ['logistics', 'join:WHS301'],
+        joinCode: 'WHS301',
       },
     ],
   },
@@ -228,12 +189,13 @@ const SCENARIO: SeedDepartment[] = [
         name: 'CCTV',
         snssai: { sst: 1, sd: '000601' },
         profile: SliceProfile.EMBB,
-        baselineAllocatedMbps: 2400,
-        minGuaranteedMbps: 600,
-        maxBurstMbps: 3600,
-        slaTargets: sla(80, 25, 0.8, 500, 99.0),
+        baselineAllocatedMbps: Math.round(2400 * s),
+        minGuaranteedMbps: Math.round(600 * s),
+        maxBurstMbps: Math.round(3600 * s),
+        slaTargets: sla(900, 145, 8.0, 500, 99.0),
         site: 'Site-wide',
-        tags: ['cctv'],
+        tags: ['cctv', 'join:SEC601'],
+        joinCode: 'SEC601',
       },
     ],
   },
@@ -258,12 +220,13 @@ const SCENARIO: SeedDepartment[] = [
         name: 'Office Wi-Fi',
         snssai: { sst: 1, sd: '000501' },
         profile: SliceProfile.EMBB,
-        baselineAllocatedMbps: 3200,
-        minGuaranteedMbps: 700,
-        maxBurstMbps: 5000,
-        slaTargets: sla(50, 15, 0.5, 600, 99.5),
+        baselineAllocatedMbps: Math.round(3200 * s),
+        minGuaranteedMbps: Math.round(700 * s),
+        maxBurstMbps: Math.round(5000 * s),
+        slaTargets: sla(600, 95, 5.0, 600, 99.5),
         site: 'Building A',
-        tags: ['office'],
+        tags: ['office', 'join:OFF501'],
+        joinCode: 'OFF501',
       },
     ],
   },
@@ -288,29 +251,26 @@ const SCENARIO: SeedDepartment[] = [
     slices: [
       {
         name: 'Canteen Signage',
-        // URLLC profile, BEST_EFFORT business value (£15/min downtime cost).
-        // A QoS-priority controller protects this ahead of the Quality Lab.
-        // This platform degrades it first (up to 80% cut).
         snssai: { sst: 2, sd: '000701' },
         profile: SliceProfile.URLLC,
-        baselineAllocatedMbps: 1400,
-        minGuaranteedMbps: 280,
-        maxBurstMbps: 2000,
-        slaTargets: sla(25, 8, 1.0, 80, 98.0),
+        baselineAllocatedMbps: Math.round(1400 * s),
+        minGuaranteedMbps: Math.round(280 * s),
+        maxBurstMbps: Math.round(2000 * s),
+        slaTargets: sla(350, 60, 10.0, 80, 98.0),
         site: 'Site-wide',
-        tags: ['signage'],
+        tags: ['signage', 'join:CAN701'],
+        joinCode: 'CAN701',
       },
     ],
   },
 ];
 
 async function main(): Promise<void> {
-  console.log('\n▸ Seeding the arbitration platform\n');
+  console.log(`\n▸ Seeding testbed: scale factor s = ${s} (${env.NETWORK_TOTAL_CAPACITY_MBPS} kbps total)\n`);
 
   const container = await buildContainer({ headless: true });
 
   try {
-    // Purge any slices and departments that do not match the canonical 7-dept / 9-slice scenario
     const canonicalDeptSlugs = new Set(SCENARIO.map((d) => slugify(d.name)));
     const canonicalSliceSlugs = new Set(SCENARIO.flatMap((d) => d.slices.map((s) => slugify(s.name))));
 
@@ -338,6 +298,8 @@ async function main(): Promise<void> {
     let totalBaseline = 0;
     let totalFloor = 0;
 
+    const gatewayCatalogueItems: any[] = [];
+
     for (const definition of SCENARIO) {
       const { slices, ...departmentPayload } = definition;
 
@@ -363,24 +325,54 @@ async function main(): Promise<void> {
         totalBaseline += sliceDefinition.baselineAllocatedMbps;
         totalFloor += sliceDefinition.minGuaranteedMbps;
 
+        let activeSlice = existingSlice;
         if (existingSlice) {
           await container.repositories.slices.base.update(existingSlice.id, {
             ...sliceDefinition,
             departmentId: department.id,
           });
-          console.log(`      = ${sliceDefinition.name} (updated)`);
-          continue;
+          console.log(`      = ${sliceDefinition.name} (updated) [join: ${sliceDefinition.joinCode}]`);
+        } else {
+          activeSlice = await container.services.slices.create(
+            { ...sliceDefinition, departmentId: department.id },
+            SYSTEM_ACTOR,
+          );
+          slicesCreated += 1;
+          console.log(
+            `      + ${activeSlice.name} — ${activeSlice.profile}, ` +
+              `${activeSlice.baselineAllocatedMbps} kbps baseline / ${activeSlice.minGuaranteedMbps} kbps floor [join: ${sliceDefinition.joinCode}]`,
+          );
         }
 
-        const slice = await container.services.slices.create(
-          { ...sliceDefinition, departmentId: department.id },
-          SYSTEM_ACTOR,
-        );
-        slicesCreated += 1;
-        console.log(
-          `      + ${slice.name} — ${slice.profile}, ` +
-            `${slice.baselineAllocatedMbps} Mbps baseline / ${slice.minGuaranteedMbps} Mbps floor`,
-        );
+        gatewayCatalogueItems.push({
+          code: slugify(sliceDefinition.name),
+          name: sliceDefinition.name,
+          department: definition.name,
+          sNssai: sliceDefinition.snssai,
+          profile: sliceDefinition.profile,
+          baselineKbps: sliceDefinition.baselineAllocatedMbps,
+          floorKbps: sliceDefinition.minGuaranteedMbps,
+          burstKbps: sliceDefinition.maxBurstMbps,
+          currentLimitKbps: sliceDefinition.baselineAllocatedMbps,
+          slaTargets: {
+            latencyMs: sliceDefinition.slaTargets.maxLatencyMs,
+            jitterMs: sliceDefinition.slaTargets.maxJitterMs,
+            lossPct: sliceDefinition.slaTargets.maxPacketLossPercent,
+            minThroughputKbps: sliceDefinition.slaTargets.minThroughputMbps,
+            availabilityPct: sliceDefinition.slaTargets.availabilityPercent,
+          },
+          joinCode: sliceDefinition.joinCode,
+        });
+      }
+    }
+
+    // Push catalogue to gateway if gateway adapter is configured
+    if (container.telemetryProvider.name === 'gateway' && (container.telemetryProvider as any).pushCatalogue) {
+      try {
+        await (container.telemetryProvider as any).pushCatalogue(gatewayCatalogueItems);
+        console.log('\n  ✓ Pushed slice catalogue to Slice Gateway');
+      } catch (err: any) {
+        console.warn('\n  ! Gateway not running; skipping direct catalogue push:', err.message);
       }
     }
 
@@ -427,19 +419,18 @@ async function main(): Promise<void> {
     console.log(`  slices created          ${slicesCreated}`);
     console.log(`  governing policy        ${policy.name} (revision ${policy.revision})`);
     console.log('');
-    console.log(`  offered capacity        ${OFFERED_CAPACITY_MBPS} Mbps`);
+    console.log(`  offered capacity        ${OFFERED_CAPACITY_MBPS} kbps`);
     console.log(
-      `  committed baselines     ${totalBaseline} Mbps  ` +
+      `  committed baselines     ${totalBaseline} kbps  ` +
         `(${((totalBaseline / OFFERED_CAPACITY_MBPS) * 100).toFixed(0)}% — oversubscribed by design)`,
     );
     console.log(
-      `  committed floors        ${totalFloor} Mbps  ` +
+      `  committed floors        ${totalFloor} kbps  ` +
         `(${((totalFloor / OFFERED_CAPACITY_MBPS) * 100).toFixed(0)}% — leaves arbitration solvable)`,
     );
     console.log('');
-    console.log('  Watch for: Clinic is never degraded (LIFE_SAFETY constraint),');
-    console.log('  and Canteen Signage is degraded before Quality lab despite carrying');
-    console.log('  the higher network QoS profile.');
+    console.log('  Clinic is never degraded (LIFE_SAFETY constraint),');
+    console.log('  and Canteen Signage is degraded first.');
     console.log('');
 
     await container.shutdown();

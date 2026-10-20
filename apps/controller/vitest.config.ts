@@ -14,6 +14,7 @@ export default defineConfig({
       DATASTORE_DRIVER: process.env.DATASTORE_DRIVER ?? 'memory',
       AUTH_DRIVER: process.env.AUTH_DRIVER ?? 'dev',
       MEMORY_STORE_PERSIST: 'false',
+      TELEMETRY_PROVIDER: 'synthetic',
     },
     // Repository adapters and jobs mutate shared module-level state (the in-memory
     // datastore, the scheduler registry). Running files in a single fork keeps that

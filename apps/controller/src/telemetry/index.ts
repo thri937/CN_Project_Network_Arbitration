@@ -10,6 +10,7 @@ import {
   type PrometheusTelemetryConfig,
 } from './adapters/prometheus.telemetry.adapter';
 import { KubernetesTelemetryAdapter } from './adapters/kubernetes.telemetry.adapter';
+import { GatewayTelemetryAdapter } from './adapters/gateway.telemetry.adapter';
 
 const log = createLogger('telemetry-factory');
 
@@ -63,6 +64,21 @@ export async function createTelemetryProvider(
   switch (kind) {
     case TelemetryProviderKind.SYNTHETIC: {
       const provider = new SyntheticTelemetryAdapter();
+      log.info({ provider: kind }, 'telemetry provider ready');
+      return provider;
+    }
+
+    case TelemetryProviderKind.GATEWAY: {
+      const provider = new GatewayTelemetryAdapter({
+        baseUrl: process.env.GATEWAY_URL || 'http://127.0.0.1:9090',
+        token: process.env.GATEWAY_TOKEN || 'change-me-long-random',
+        timeoutMs: Number(process.env.TELEMETRY_TIMEOUT_MS ?? 4000),
+      });
+      try {
+        await provider.ping();
+      } catch (err: any) {
+        log.warn({ error: err.message }, 'gateway ping failed during startup (gateway may still be booting)');
+      }
       log.info({ provider: kind }, 'telemetry provider ready');
       return provider;
     }
@@ -151,6 +167,7 @@ function assertUnreachable(kind: never): never {
 }
 
 export { SyntheticTelemetryAdapter } from './synthetic/synthetic.telemetry.adapter';
+export { GatewayTelemetryAdapter } from './adapters/gateway.telemetry.adapter';
 export { PrometheusTelemetryAdapter } from './adapters/prometheus.telemetry.adapter';
 export { KubernetesTelemetryAdapter } from './adapters/kubernetes.telemetry.adapter';
 export { FaultKind } from './synthetic/trafficModel';

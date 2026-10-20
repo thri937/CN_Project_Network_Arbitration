@@ -48,6 +48,7 @@ export type AuthDriver = (typeof AuthDriver)[keyof typeof AuthDriver];
 
 export const TelemetryProviderKind = {
   SYNTHETIC: 'synthetic',
+  GATEWAY: 'gateway',
   OPEN5GS: 'open5gs',
   FREE5GC: 'free5gc',
   KUBERNETES: 'kubernetes',
@@ -116,6 +117,9 @@ const schema = z.object({
   MEMORY_STORE_FLUSH_MS: intFromEnv(1500, 100, 60_000),
 
   /* ---- Network model ----------------------------------------------- */
+  BANDWIDTH_UNIT: z.string().default('kbps'),
+  GATEWAY_URL: z.string().default('http://127.0.0.1:9090'),
+  GATEWAY_TOKEN: z.string().default('change-me-long-random'),
   /** Total transport capacity of the modelled enterprise core, in Mbps. */
   NETWORK_TOTAL_CAPACITY_MBPS: z.coerce.number().positive().default(10_000),
   /** Capacity reserved for signalling/OAM and never offered to slices. */
