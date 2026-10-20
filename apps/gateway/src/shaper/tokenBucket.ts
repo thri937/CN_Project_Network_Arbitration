@@ -3,15 +3,15 @@ export class TokenBucket {
   private burstBytes: number;
   private tokens: number;
 
-  constructor(rateKbps: number, burstDurationS = 0.1) {
+  constructor(rateKbps: number, burstDurationS = 0.1, startFull = true) {
     this.rateBps = (rateKbps * 1000) / 8; // bytes per second
-    this.burstBytes = Math.max(1024, this.rateBps * burstDurationS);
-    this.tokens = this.burstBytes; // start full
+    this.burstBytes = Math.max(64, this.rateBps * burstDurationS);
+    this.tokens = startFull ? this.burstBytes : 0;
   }
 
   public setRateKbps(rateKbps: number, burstDurationS = 0.1): void {
     this.rateBps = (rateKbps * 1000) / 8;
-    this.burstBytes = Math.max(1024, this.rateBps * burstDurationS);
+    this.burstBytes = Math.max(64, this.rateBps * burstDurationS);
     if (this.tokens > this.burstBytes) {
       this.tokens = this.burstBytes;
     }
@@ -38,7 +38,7 @@ export class TokenBucket {
     return false;
   }
 
-  public reset(): void {
-    this.tokens = this.burstBytes;
+  public reset(full = false): void {
+    this.tokens = full ? this.burstBytes : 0;
   }
 }
