@@ -22,6 +22,9 @@ import type { UserRole } from '@/types/api';
 const DashboardPage = lazy(() =>
   import('@/pages/DashboardPage').then((m) => ({ default: m.DashboardPage })),
 );
+const TestbedPage = lazy(() =>
+  import('@/pages/TestbedPage').then((m) => ({ default: m.TestbedPage })),
+);
 const MonitoringPage = lazy(() =>
   import('@/pages/MonitoringPage').then((m) => ({ default: m.MonitoringPage })),
 );
@@ -87,6 +90,7 @@ export function App(): JSX.Element {
           }
         />
 
+        <Route path="testbed" element={<Lazy><TestbedPage /></Lazy>} />
         <Route path="monitoring" element={<Lazy><MonitoringPage /></Lazy>} />
         <Route path="slices" element={<Lazy><SlicesPage /></Lazy>} />
         <Route path="departments" element={<Lazy><DepartmentsPage /></Lazy>} />

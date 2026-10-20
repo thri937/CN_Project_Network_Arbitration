@@ -1,4 +1,4 @@
-import { del, get, getPage, patch, post } from './client';
+import { del, get, getPage, patch, post, put } from './client';
 import type {
   ArbitrationDecision,
   ArbitrationPlan,
@@ -345,4 +345,51 @@ export const settingsApi = {
 export const reportsApi = {
   overview: (params?: { from?: string; to?: string }) =>
     get<ReportOverview>('/reports/overview', { params }),
+};
+
+/* ------------------------------------------------------------------ */
+export interface TestbedStatus {
+  gatewayOk: boolean;
+  gatewayUptimeS: number;
+  capacity: { totalMbps: number; reservedMbps: number; offeredMbps: number } | null;
+  lanIps: { interface: string; ip: string; isHotspot: boolean }[];
+  bandwidthUnit: string;
+  autoArbitration: boolean;
+  activeExperiment: {
+    id: string;
+    name: string;
+    startedAtMs: number;
+    stoppedAtMs?: number;
+    rowCount: number;
+  } | null;
+}
+
+export interface TestbedDevice {
+  deviceId: string;
+  nickname: string;
+  sourceIp: string;
+  sliceCode: string;
+  userAgent?: string;
+  lastSeenMs: number;
+  activeRateKbps: number;
+  mode: 'local' | 'internet';
+  operatorControlEnabled: boolean;
+}
+
+export const testbedApi = {
+  status: () => get<TestbedStatus>('/testbed/status'),
+  devices: () => get<TestbedDevice[]>('/testbed/devices'),
+  unbindDevice: (id: string) => del<{ unbind: boolean }>(`/testbed/devices/${id}`),
+  rotateJoinCode: (sliceId: string) =>
+    post<{ sliceId: string; code: string; newJoinCode: string }>(`/testbed/slices/${sliceId}/join-code/rotate`),
+  setSliceDemand: (sliceId: string, kbps: number, mode?: 'local' | 'internet') =>
+    post<{ applied: boolean }>(`/testbed/slices/${sliceId}/demand`, { kbps, mode }),
+  runScenario: (name: string) =>
+    post<{ scenario: string; started: boolean; timestamp: number }>(`/testbed/scenarios/${name}/run`),
+  setArbitration: (enabled: boolean) =>
+    put<{ enabled: boolean }>('/testbed/arbitration', { enabled }),
+  startExperiment: (name: string) =>
+    post<{ experimentId: string; name: string }>('/testbed/experiments', { name }),
+  stopExperiment: () =>
+    post<{ stopped: boolean; record: any }>('/testbed/experiments/stop'),
 };

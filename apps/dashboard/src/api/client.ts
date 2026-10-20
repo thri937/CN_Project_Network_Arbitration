@@ -246,6 +246,11 @@ export async function patch<T>(url: string, body?: unknown): Promise<T> {
   return response.data.data;
 }
 
+export async function put<T>(url: string, body?: unknown, config?: AxiosRequestConfig): Promise<T> {
+  const response = await instance.put<ApiSuccess<T>>(url, body, config);
+  return response.data.data;
+}
+
 /**
  * DELETE.
  *

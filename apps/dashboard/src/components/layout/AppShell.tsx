@@ -39,6 +39,7 @@ const NAV_SECTIONS: { heading: string; items: NavItem[] }[] = [
     heading: 'Operations',
     items: [
       { to: '/', label: 'Dashboard', icon: Icons.dashboard },
+      { to: '/testbed', label: 'Testbed Topology', icon: Icons.network },
       { to: '/monitoring', label: 'Runtime Monitoring', icon: Icons.monitoring },
       { to: '/contention', label: 'Contention Events', icon: Icons.contention, indicator: 'contention' },
       { to: '/arbitration', label: 'Arbitration Decisions', icon: Icons.arbitration },
