@@ -11,11 +11,7 @@
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "baseUrl": ".",
-    "paths": {
-      "@cn/shared": ["../../packages/shared/dist/index.d.ts"]
-    }
+    "forceConsistentCasingInFileNames": true
   },
   "include": ["src/**/*"]
 }
