@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="dark light" />
+    <meta
+      name="description"
+      content="Runtime arbitration for contended, SLA-critical enterprise network slices."
+    />
+    <title>Network Arbitration — Operations Centre</title>
+
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+
+    <script>
+      /**
+       * Apply the stored theme BEFORE first paint.
+       *
+       * Deferring this to React causes a flash of the wrong theme on every load, which on a
+       * wall-mounted NOC display in a dark room is a bright white strobe several times a day.
+       */
+      (function () {
+        try {
+          var stored = localStorage.getItem('arbitration.theme');
+          var preferDark =
+            stored === 'dark' ||
+            (stored === null && window.matchMedia('(prefers-color-scheme: dark)').matches) ||
+            (stored === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+          document.documentElement.classList.toggle('dark', preferDark);
+        } catch (e) {
+          /* localStorage unavailable (private mode); the dark default in `class` stands. */
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

@@ -1,0 +1,36 @@
+{
+  "name": "cn-real-network-arbitration",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Real Network Arbitration Testbed — Runtime Arbitration for Contended Enterprise Network Slices on Real Wi-Fi",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "engines": {
+    "node": ">=20.11.0"
+  },
+  "scripts": {
+    "setup": "tsx scripts/setup.ts",
+    "seed": "npm run seed --workspace @cn/controller",
+    "dev": "concurrently -k -p \"[{name}]\" -n \"ctrl,gate,dash,port\" -c \"blue.bold,green.bold,magenta.bold,yellow.bold\" \"npm run dev -w @cn/controller\" \"npm run dev -w @cn/gateway\" \"npm run dev -w @cn/dashboard\" \"npm run dev -w @cn/portal\"",
+    "build": "npm run build --workspace @cn/shared && npm run build --workspace @cn/controller && npm run build --workspace @cn/gateway && npm run build --workspace @cn/dashboard && npm run build --workspace @cn/portal && npm run build --workspace @cn/agent",
+    "start": "concurrently -k -p \"[{name}]\" -n \"ctrl,gate\" -c \"blue.bold,green.bold\" \"node apps/controller/dist/server.js\" \"node apps/gateway/dist/index.js\"",
+    "test": "npm test --workspace @cn/controller && npm test --workspace @cn/gateway",
+    "lan:info": "tsx scripts/lan-info.ts",
+    "demo:local": "tsx scripts/demo-local.ts",
+    "calibrate": "tsx scripts/calibrate.ts",
+    "isp:check": "tsx scripts/isp-check.ts",
+    "experiment:summary": "tsx scripts/experiment-summary.ts",
+    "build:agent:exe": "tsx scripts/build-agent-exe.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "@types/qrcode": "^1.5.5",
+    "concurrently": "^9.1.2",
+    "cross-env": "^7.0.3",
+    "qrcode": "^1.5.4",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3"
+  }
+}

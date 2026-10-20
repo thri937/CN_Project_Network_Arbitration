@@ -1,0 +1,33 @@
+node_modules/
+dist/
+build/
+coverage/
+.env
+.env.local
+.env.*.local
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Local persisted development datastore
+apps/controller/.data/
+.data/
+
+# Firebase
+**/serviceAccount*.json
+**/firebase-adminsdk-*.json
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+
+# TypeScript
+**/.tmp/
+*.tsbuildinfo
+
+# Experiments CSVs
+experiments/*.csv
+!experiments/README.md
