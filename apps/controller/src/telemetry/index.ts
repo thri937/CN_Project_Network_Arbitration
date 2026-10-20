@@ -70,8 +70,8 @@ export async function createTelemetryProvider(
 
     case TelemetryProviderKind.GATEWAY: {
       const provider = new GatewayTelemetryAdapter({
-        baseUrl: process.env.GATEWAY_URL || 'http://127.0.0.1:9090',
-        token: process.env.GATEWAY_TOKEN || 'change-me-long-random',
+        baseUrl: env.GATEWAY_URL || process.env.GATEWAY_URL || 'http://127.0.0.1:9090',
+        token: env.GATEWAY_TOKEN || process.env.GATEWAY_TOKEN || 'change-me-long-random-gateway-token-sec-2026',
         timeoutMs: Number(process.env.TELEMETRY_TIMEOUT_MS ?? 4000),
       });
       try {

@@ -5,6 +5,8 @@ import { z } from 'zod';
 
 // Load environment configuration from root .env or package/cwd paths (except during test runs)
 if (process.env.NODE_ENV !== 'test') {
+  dotenv.config({ path: path.resolve(process.cwd(), '.env'), override: true });
+  dotenv.config({ path: path.resolve(__dirname, '../../../.env'), override: true });
   dotenv.config({ path: path.resolve(__dirname, '../../../../.env'), override: true });
   dotenv.config({ path: path.resolve(__dirname, '../../.env') });
   dotenv.config();

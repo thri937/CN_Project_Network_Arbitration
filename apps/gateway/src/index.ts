@@ -12,7 +12,9 @@ import { ForwardProxyServer } from './proxy/forwardProxy.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+dotenv.config({ path: path.resolve(process.cwd(), '.env'), override: true });
 dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
+dotenv.config();
 
 export interface GatewayInstance {
   scheduler: ShaperScheduler;
@@ -143,7 +145,9 @@ export async function createGateway(): Promise<GatewayInstance> {
     },
   ];
   deviceRegistry.setCatalogue(defaultSlices);
-  scheduler.initSlices(defaultSlices);
+  for (const s of defaultSlices) {
+    scheduler.registerSlice(s);
+  }
 
   let portalServerRef: PortalServer;
 

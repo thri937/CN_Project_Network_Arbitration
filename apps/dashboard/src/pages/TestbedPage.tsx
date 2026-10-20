@@ -556,13 +556,22 @@ export function TestbedPage() {
                       Generating QR...
                     </div>
                   )}
-                  <div className="text-center mt-2">
+                  <div className="text-center mt-2 w-full">
                     <span className="text-xs text-slate-500 font-semibold uppercase tracking-wider block">
-                      Scan with Phone Camera
+                      Scan with Phone (Same Wi-Fi)
                     </span>
-                    <span className="text-xs font-mono text-slate-800 break-all font-semibold">
-                      http://{selectedLanIp}:8080/?code={selectedSlice.tags.find((t) => t.startsWith('join:'))?.slice(5) || ''}
+                    <span className="text-[11px] font-mono text-slate-700 break-all font-semibold block mt-0.5">
+                      http://{selectedLanIp}:8080/join?code={selectedSlice.tags.find((t) => t.startsWith('join:'))?.slice(5) || selectedSlice.code.slice(0, 6).toUpperCase()}
                     </span>
+
+                    <a
+                      href={`http://localhost:8080/join?code=${selectedSlice.tags.find((t) => t.startsWith('join:'))?.slice(5) || selectedSlice.code.slice(0, 6).toUpperCase()}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-3 w-full py-2.5 px-3 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-bold text-xs rounded-lg text-center flex items-center justify-center gap-1.5 shadow transition"
+                    >
+                      <span>🚀 Open Client Portal in New Tab (Local Test)</span>
+                    </a>
                   </div>
                 </div>
 

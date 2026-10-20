@@ -38,7 +38,7 @@ export function JoinPage({ onJoined }: Props) {
   }, []);
 
   const selectedSlice = slices.find(
-    (s) => s.joinCode.toUpperCase() === code.trim().toUpperCase()
+    (s) => s.joinCode?.toUpperCase() === code.trim().toUpperCase()
   );
 
   const handleJoin = async (e: React.FormEvent) => {
@@ -159,7 +159,7 @@ export function JoinPage({ onJoined }: Props) {
               </div>
               <div>
                 <span className="text-slate-500 block">Target Latency</span>
-                <span className="font-semibold text-slate-200">&lt; {selectedSlice.slaTargets.latencyMs} ms</span>
+                <span className="font-semibold text-slate-200">&lt; {selectedSlice.slaTargets?.latencyMs ?? 300} ms</span>
               </div>
             </div>
           </div>
@@ -185,12 +185,13 @@ export function JoinPage({ onJoined }: Props) {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {slices.map((s) => {
-              const isSelected = s.joinCode === code;
+              const sliceJoinCode = s.joinCode || s.code.slice(0, 6).toUpperCase();
+              const isSelected = sliceJoinCode === code;
               return (
                 <button
                   key={s.code}
                   type="button"
-                  onClick={() => setCode(s.joinCode)}
+                  onClick={() => setCode(sliceJoinCode)}
                   className={`text-left p-4 rounded-xl border transition duration-150 ${
                     isSelected
                       ? 'bg-blue-950/40 border-blue-500 ring-1 ring-blue-500'
@@ -200,7 +201,7 @@ export function JoinPage({ onJoined }: Props) {
                   <div className="flex items-center justify-between mb-1.5">
                     <span className="text-xs font-bold text-slate-300">{s.department}</span>
                     <span className="font-mono text-xs font-bold px-2 py-0.5 bg-slate-900 border border-slate-700 rounded text-blue-400">
-                      {s.joinCode}
+                      {sliceJoinCode}
                     </span>
                   </div>
                   <div className="text-sm font-semibold text-slate-100 truncate">{s.name}</div>
