@@ -92,19 +92,29 @@ export function TestbedPage() {
     setCustomDemand(selectedSlice.baselineAllocatedMbps);
   }, [selectedSlice, selectedLanIp]);
 
-  // Topology node positioning: 7 slices arranged radially
-  const nodeLayout = [
-    { x: 450, y: 75 },   // Top (Clinic)
-    { x: 610, y: 135 },  // Top-Right (Factory)
-    { x: 670, y: 280 },  // Right (Quality Lab)
-    { x: 570, y: 420 },  // Bottom-Right (Security)
-    { x: 330, y: 420 },  // Bottom-Left (Office)
-    { x: 230, y: 280 },  // Left (Warehouse)
-    { x: 290, y: 135 },  // Top-Left (Canteen)
+  // Topology node positioning: deterministic symmetric layout for 7 slices
+  const nodePositionsByCode: Record<string, { x: number; y: number }> = {
+    'canteen-signage': { x: 450, y: 95 },        // Top Center
+    'cctv': { x: 630, y: 140 },                  // Top-Right
+    'factory-automation': { x: 680, y: 270 },    // Right (Robotics)
+    'lab-instrumentation': { x: 600, y: 410 },   // Bottom-Right
+    'office-wi-fi': { x: 300, y: 410 },          // Bottom-Left
+    'patient-telemetry': { x: 220, y: 270 },     // Left (Emergency / Clinic)
+    'warehouse-operations': { x: 270, y: 140 },  // Top-Left
+  };
+
+  const defaultRadialLayout = [
+    { x: 450, y: 95 },
+    { x: 630, y: 140 },
+    { x: 680, y: 270 },
+    { x: 600, y: 410 },
+    { x: 300, y: 410 },
+    { x: 220, y: 270 },
+    { x: 270, y: 140 },
   ];
 
   const topologyNodes: TopologyNode[] = slices.slice(0, 7).map((s, idx) => {
-    const coords = nodeLayout[idx] || { x: 450, y: 260 };
+    const coords = nodePositionsByCode[s.code] || defaultRadialLayout[idx] || { x: 450, y: 260 };
     const joinTag = s.tags.find((t) => t.startsWith('join:'));
     const joinCode = joinTag ? joinTag.slice(5) : s.code.slice(0, 6).toUpperCase();
     return {
@@ -412,7 +422,7 @@ export function TestbedPage() {
                     key={node.slice.id}
                     transform={`translate(${node.x}, ${node.y})`}
                     onClick={() => setSelectedSlice(node.slice)}
-                    className="cursor-pointer transition-transform hover:scale-105"
+                    className="cursor-pointer group select-none"
                   >
                     <rect
                       x="-65"
@@ -423,7 +433,7 @@ export function TestbedPage() {
                       fill={fillColor}
                       stroke={strokeColor}
                       strokeWidth={isSelected ? '2.5' : '1.5'}
-                      className="filter drop-shadow-md"
+                      className={isSelected ? 'filter drop-shadow-[0_0_12px_rgba(59,130,246,0.7)]' : 'filter drop-shadow-md group-hover:brightness-125 transition-all'}
                     />
 
                     {/* Join Code Pill */}
