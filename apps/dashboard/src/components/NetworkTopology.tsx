@@ -272,53 +272,38 @@ function DepartmentNode({
   const labelY = anchor === 'middle' ? (y < centre ? -30 : 38) : 0;
 
   return (
-    <Tooltip
-      content={
-        <>
-          <strong>{node.department.name}</strong>
-          <br />
-          {humanise(node.department.criticality)} · {node.sliceCount} slice(s)
-          <br />
-          Allocated {formatBandwidth(node.allocatedMbps)}, demand{' '}
-          {formatBandwidth(node.demandMbps)}
-          <br />
-          Max degradation {formatPercent(node.department.effectiveDegradationCeiling, 0)}
-          {node.department.structurallyExempt && ' — structurally exempt'}
-        </>
-      }
-    >
-      <g className="cursor-pointer">
-        {degraded && (
-          <circle cx={x} cy={y} r="26" fill={colour} fillOpacity="0.12" className="animate-pulse-slow" />
-        )}
+    <g className="cursor-pointer">
+      <title>{`${node.department.name} (${humanise(node.department.criticality)})\n${node.sliceCount} slice(s)\nAllocated: ${formatBandwidth(node.allocatedMbps)}, demand: ${formatBandwidth(node.demandMbps)}\nMax degradation: ${formatPercent(node.department.effectiveDegradationCeiling, 0)}${node.department.structurallyExempt ? ' — structurally exempt' : ''}`}</title>
+      {degraded && (
+        <circle cx={x} cy={y} r="26" fill={colour} fillOpacity="0.12" className="animate-pulse-slow" />
+      )}
 
-        <circle
-          cx={x}
-          cy={y}
-          r="20"
-          className="fill-surface-raised"
-          stroke={colour}
-          strokeWidth={degraded ? 2.5 : 1.75}
-        />
+      <circle
+        cx={x}
+        cy={y}
+        r="20"
+        className="fill-surface-raised"
+        stroke={colour}
+        strokeWidth={degraded ? 2.5 : 1.75}
+      />
 
-        <text x={x} y={y + 4} textAnchor="middle" className="fill-content text-[11px] font-semibold">
-          {node.sliceCount}
-        </text>
+      <text x={x} y={y + 4} textAnchor="middle" className="fill-content text-[11px] font-semibold">
+        {node.sliceCount}
+      </text>
 
-        <text
-          x={x + labelOffset}
-          y={y + labelY + (anchor === 'middle' ? 0 : 4)}
-          textAnchor={anchor}
-          className="fill-content-muted text-[10px] font-medium"
-        >
-          {truncate(node.department.name, 18)}
-        </text>
+      <text
+        x={x + labelOffset}
+        y={y + labelY + (anchor === 'middle' ? 0 : 4)}
+        textAnchor={anchor}
+        className="fill-content-muted text-[10px] font-medium"
+      >
+        {truncate(node.department.name, 18)}
+      </text>
 
-        {node.department.structurallyExempt && (
-          <circle cx={x + 15} cy={y - 15} r="4.5" className="fill-info" />
-        )}
-      </g>
-    </Tooltip>
+      {node.department.structurallyExempt && (
+        <circle cx={x + 15} cy={y - 15} r="4.5" className="fill-info" />
+      )}
+    </g>
   );
 }
 

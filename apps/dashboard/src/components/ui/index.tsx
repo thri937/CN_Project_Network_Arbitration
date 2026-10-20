@@ -414,13 +414,26 @@ export function Td({
  * operator should be able to discover WHY without leaving the page. CSS-only, so it costs
  * nothing at 2 Hz refresh rates.
  */
-export function Tooltip({ content, children }: { content: ReactNode; children: ReactNode }) {
+export function Tooltip({
+  content,
+  children,
+  position = 'top',
+}: {
+  content: ReactNode;
+  children: ReactNode;
+  position?: 'top' | 'bottom';
+}) {
   return (
-    <span className="group/tip relative inline-flex">
+    <span className="group/tip relative inline-flex items-center">
       {children}
       <span
         role="tooltip"
-        className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-1.5 hidden -translate-x-1/2 whitespace-normal rounded-lg border border-edge-strong bg-surface-raised px-3 py-2 text-xs font-normal leading-relaxed text-content shadow-xl group-hover/tip:block w-64"
+        className={cn(
+          'pointer-events-none absolute z-[100] hidden whitespace-normal rounded-lg border border-edge-strong bg-slate-900/95 backdrop-blur-md px-3 py-2 text-xs font-normal leading-relaxed text-slate-100 shadow-2xl group-hover/tip:block w-64 max-w-[85vw]',
+          position === 'top'
+            ? 'bottom-full left-1/2 -translate-x-1/2 mb-2'
+            : 'top-full left-1/2 -translate-x-1/2 mt-2',
+        )}
       >
         {content}
       </span>

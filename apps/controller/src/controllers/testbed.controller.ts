@@ -94,6 +94,31 @@ export function createTestbedController(deps: TestbedControllerDeps) {
         gatewayOk = false;
       }
 
+      // Auto-start continuous experiment logging whenever gateway is online
+      if (gatewayOk && !activeExperiment) {
+        try {
+          const fileName = `${Date.now()}-Continuous-Testbed-Logging.csv`;
+          const filePath = path.join(experimentsDir, fileName);
+          const stream = fs.createWriteStream(filePath, { flags: 'a' });
+          const recorder = new ExperimentRecorder(
+            deps.telemetryProvider as any,
+            stream,
+            rowContext('Continuous-Logging')
+          );
+          activeExperiment = {
+            record: {
+              id: String(Date.now()),
+              name: 'Continuous-Logging',
+              startedAtMs: Date.now(),
+              fileName,
+              rowCount: 0,
+            },
+            stream,
+            recorder,
+          };
+        } catch {}
+      }
+
       // Discover LAN IPs
       const nets = os.networkInterfaces();
       const lanIps: { interface: string; ip: string; isHotspot: boolean; virtual: boolean }[] = [];

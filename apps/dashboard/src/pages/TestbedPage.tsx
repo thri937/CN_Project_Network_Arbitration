@@ -33,6 +33,10 @@ export function TestbedPage() {
 
   // Load initial data and poll devices & testbed status
   useEffect(() => {
+    // Ensure continuous experiment recording is always running
+    testbedApi.startExperiment('Continuous-5G-Testbed').catch(() => {});
+    setRecordingActive(true);
+
     const fetchData = async () => {
       try {
         const [sliceList, status, devList] = await Promise.all([
@@ -181,7 +185,11 @@ export function TestbedPage() {
         title="Real-Network 5G Slice Testbed"
         description="Physical traffic shaping, token-bucket enforcement, mobile device slice portal, and CBHA dynamic arbitration."
         action={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-950/70 border border-emerald-700/60 rounded-lg text-emerald-300 text-xs font-semibold shadow-sm">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span>Always-On Logging: Active {testbedStatus?.activeExperiment?.rowCount ? `(${testbedStatus.activeExperiment.rowCount} rows)` : ''}</span>
+            </div>
             <Button
               variant={testbedStatus?.autoArbitration ? 'primary' : 'secondary'}
               size="sm"
@@ -189,13 +197,16 @@ export function TestbedPage() {
             >
               {testbedStatus?.autoArbitration ? 'Auto-Arbitration: ON' : 'Auto-Arbitration: OFF'}
             </Button>
-            <Button
-              variant={recordingActive ? 'danger' : 'secondary'}
-              size="sm"
-              onClick={handleToggleExperiment}
-            >
-              {recordingActive ? 'Stop Recording' : 'Start Recording'}
-            </Button>
+            {testbedStatus?.activeExperiment && (
+              <a
+                href={`/api/v1/testbed/experiments/${testbedStatus.activeExperiment.id}/download`}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1 px-3 py-1.5 bg-surface-elevated hover:bg-surface border border-border rounded-lg text-xs font-semibold text-text transition shadow-sm"
+              >
+                <span>📥 Export CSV Log</span>
+              </a>
+            )}
           </div>
         }
       />
@@ -424,11 +435,12 @@ export function TestbedPage() {
                     onClick={() => setSelectedSlice(node.slice)}
                     className="cursor-pointer group select-none"
                   >
+                    <title>{`${node.slice.name} (${node.slice.department})\nJoin Code: ${node.joinCode}\nProfile: ${node.slice.profile}\nBaseline Limit: ${node.slice.baselineAllocatedMbps} ${bandwidthUnit}\nFloor Guarantee: ${node.slice.minGuaranteedMbps} ${bandwidthUnit}\nSLA Max Latency: < ${node.slice.slaTargets.maxLatencyMs} ms\nSLA Max Loss: < ${node.slice.slaTargets.maxPacketLossPercent}%\nConnected Devices: ${sliceDevices}\nCarried Traffic: ${liveSlice ? Math.round(liveSlice.usedMbps ?? 0) : 0} ${bandwidthUnit}\nStatus: ${isDegraded ? 'DEGRADED' : isClinic ? 'PROTECTED (SLA Guaranteed)' : 'NORMAL'}`}</title>
                     <rect
-                      x="-65"
-                      y="-34"
-                      width="130"
-                      height="68"
+                      x="-70"
+                      y="-36"
+                      width="140"
+                      height="72"
                       rx="10"
                       fill={fillColor}
                       stroke={strokeColor}
@@ -438,9 +450,9 @@ export function TestbedPage() {
 
                     {/* Join Code Pill */}
                     <rect
-                      x="18"
-                      y="-30"
-                      width="42"
+                      x="20"
+                      y="-32"
+                      width="44"
                       height="15"
                       rx="4"
                       fill="#0f172a"
@@ -448,8 +460,8 @@ export function TestbedPage() {
                       strokeWidth="1"
                     />
                     <text
-                      x="39"
-                      y="-19"
+                      x="42"
+                      y="-21"
                       textAnchor="middle"
                       fill="#38bdf8"
                       fontSize="8"
@@ -459,33 +471,33 @@ export function TestbedPage() {
                       {node.joinCode}
                     </text>
 
-                    {/* Slice Name */}
+                    {/* Slice Full Name */}
                     <text
-                      x="-55"
-                      y="-16"
+                      x="-60"
+                      y="-18"
                       textAnchor="start"
                       fill="#f8fafc"
                       fontSize="10"
                       fontWeight="bold"
                     >
-                      {node.slice.name.split(' ')[0]}
+                      {node.slice.name.length > 17 ? node.slice.name.slice(0, 15) + '…' : node.slice.name}
                     </text>
 
-                    {/* Profile & Devices */}
+                    {/* Department & Devices */}
                     <text
-                      x="-55"
-                      y="-2"
+                      x="-60"
+                      y="-4"
                       textAnchor="start"
                       fill="#94a3b8"
                       fontSize="8"
                     >
-                      {node.slice.profile} • {sliceDevices} dev
+                      {node.slice.department} • {sliceDevices} dev
                     </text>
 
-                    {/* Limit / Carried Rate */}
+                    {/* Limit / Baseline Rate */}
                     <text
-                      x="-55"
-                      y="14"
+                      x="-60"
+                      y="12"
                       textAnchor="start"
                       fill={isDegraded ? '#fbbf24' : '#10b981'}
                       fontSize="10"
@@ -498,8 +510,8 @@ export function TestbedPage() {
                     {/* Degradation / Protection badge */}
                     {isDegraded && (
                       <text
-                        x="-55"
-                        y="26"
+                        x="-60"
+                        y="24"
                         textAnchor="start"
                         fill="#f87171"
                         fontSize="8"
@@ -510,20 +522,20 @@ export function TestbedPage() {
                     )}
                     {isClinic && (
                       <text
-                        x="-55"
-                        y="26"
+                        x="-60"
+                        y="24"
                         textAnchor="start"
                         fill="#34d399"
                         fontSize="8"
                         fontWeight="bold"
                       >
-                        PROTECTED (0% Ceiling)
+                        PROTECTED (SLA Guaranteed)
                       </text>
                     )}
                     {!isDegraded && !isClinic && (
                       <text
-                        x="-55"
-                        y="26"
+                        x="-60"
+                        y="24"
                         textAnchor="start"
                         fill="#64748b"
                         fontSize="8"
