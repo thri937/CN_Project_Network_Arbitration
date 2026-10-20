@@ -13,6 +13,8 @@ export interface SliceRuntime {
   // For DRR mode
   drrDeficit: number;
   drrQuantum: number;
+  /** The quantum for the current DRR visit has been added (a visit can span ticks). */
+  drrCredited: boolean;
 }
 
 export interface ShaperConfig {
@@ -39,6 +41,7 @@ export class ShaperScheduler {
   private slices = new Map<string, SliceRuntime>();
   private sliceOrder: string[] = [];
   private rrIndex = 0;
+  private drrIndex = 0;
 
   // Clock & Tick tracking
   private isRunning = false;
@@ -94,6 +97,15 @@ export class ShaperScheduler {
     return Math.max(2 * MAX_CHUNK_BYTES, ((limitKbps * 1000) / 8) * this.queueSeconds);
   }
 
+  /**
+   * DRR weight: 20 ms of traffic at the slice's limit, so the link is shared in proportion to the
+   * limits. Not rounded up to a chunk: a slice whose quantum is smaller than a chunk banks its
+   * deficit over several visits, which keeps the weights exact for small limits.
+   */
+  private drrQuantumFor(limitKbps: number): number {
+    return Math.max(1, ((limitKbps * 1000) / 8) * 0.02);
+  }
+
   public registerSlice(item: SliceCatalogueItem): void {
     const queueCapacity = this.sliceQueueCapacity(item.currentLimitKbps);
 
@@ -103,14 +115,14 @@ export class ShaperScheduler {
       existing.bucket.setRateKbps(item.currentLimitKbps);
       existing.queue.setCapacityBytes(queueCapacity);
       existing.meter.setLimitKbps(item.currentLimitKbps);
-      existing.drrQuantum = Math.max(1024, Math.floor((item.currentLimitKbps * 1000) / 8 / 50));
+      existing.drrQuantum = this.drrQuantumFor(item.currentLimitKbps);
       return;
     }
 
     const bucket = new TokenBucket(item.currentLimitKbps, 0.1);
     const queue = new FifoQueue(queueCapacity);
     const meter = new SliceMeter(item.code, item.currentLimitKbps);
-    const quantum = Math.max(1024, Math.floor((item.currentLimitKbps * 1000) / 8 / 50));
+    const quantum = this.drrQuantumFor(item.currentLimitKbps);
 
     this.slices.set(item.code, {
       item,
@@ -120,6 +132,7 @@ export class ShaperScheduler {
       sessions: new Map(),
       drrDeficit: 0,
       drrQuantum: quantum,
+      drrCredited: false,
     });
 
     this.sliceOrder.push(item.code);
@@ -133,7 +146,7 @@ export class ShaperScheduler {
     s.bucket.setRateKbps(newLimitKbps);
     s.queue.setCapacityBytes(this.sliceQueueCapacity(newLimitKbps));
     s.meter.setLimitKbps(newLimitKbps);
-    s.drrQuantum = Math.max(1024, Math.floor((newLimitKbps * 1000) / 8 / 50));
+    s.drrQuantum = this.drrQuantumFor(newLimitKbps);
     return true;
   }
 
@@ -251,54 +264,46 @@ export class ShaperScheduler {
     }
     this.rootBucket.refill(dtSeconds);
 
-    // 3. POLICE
-    // Round-robin over slices: move chunks from sliceQueue_i into rootQueue while tokens_i allow
+    // 3. POLICE and 4. TRANSMIT
     if (this.rootDiscipline === 'fifo') {
-      this.policeFifo(nowNs);
+      // Each slice's bucket admits chunks into ONE shared FIFO that drains at the link rate.
+      this.policeFifo();
+      this.transmitRootQueue(nowNs);
     } else {
-      this.policeDrr(nowNs);
-    }
-
-    // 4. TRANSMIT
-    // Drain rootQueue while rootTokens allow; write each chunk to its socket
-    while (this.rootQueue.getDepthCount() > 0) {
-      const top = this.rootQueue.peek();
-      if (!top) break;
-
-      const chunkLen = top.data.length;
-      if (!this.rootBucket.tryConsume(chunkLen)) {
-        // Root token bucket empty for this tick
-        break;
-      }
-
-      // Dequeue from root
-      const chunk = this.rootQueue.dequeue()!;
-      const slice = this.slices.get(chunk.sliceCode);
-      if (slice) {
-        slice.meter.recordSent(chunkLen);
-      }
-
-      // Handle probe queue delay tracking
-      if (chunk.isProbe) {
-        const queueDelayMs = Number(nowNs - chunk.enqueuedAtNs) / 1e6;
-        if (slice) {
-          slice.meter.recordProbeQueueDelay(queueDelayMs);
-        }
-        if (this.onTransmitProbe) {
-          this.onTransmitProbe(chunk);
-        }
-      }
-
-      // Execute onTransmit callback (writes to socket or session)
-      if (chunk.onTransmit) {
-        try {
-          chunk.onTransmit(chunk);
-        } catch {}
-      }
+      // Each slice keeps its own queue; the link serves the slices by deficit round robin.
+      this.transmitDrr(nowNs);
     }
   }
 
-  private policeFifo(nowNs: bigint): void {
+  /** Drain the shared root FIFO while the link's tokens allow. */
+  private transmitRootQueue(nowNs: bigint): void {
+    while (this.rootQueue.getDepthCount() > 0) {
+      const top = this.rootQueue.peek();
+      if (!top) break;
+      if (!this.rootBucket.tryConsume(top.data.length)) break; // link busy until next tick
+      this.send(this.rootQueue.dequeue()!, nowNs);
+    }
+  }
+
+  /** Put one chunk on the wire: meter it, time a probe, write it to its socket or session. */
+  private send(chunk: QueueChunk, nowNs: bigint): void {
+    const slice = this.slices.get(chunk.sliceCode);
+    if (slice) slice.meter.recordSent(chunk.data.length);
+
+    if (chunk.isProbe) {
+      const queueDelayMs = Number(nowNs - chunk.enqueuedAtNs) / 1e6;
+      if (slice) slice.meter.recordProbeQueueDelay(queueDelayMs);
+      if (this.onTransmitProbe) this.onTransmitProbe(chunk);
+    }
+
+    if (chunk.onTransmit) {
+      try {
+        chunk.onTransmit(chunk);
+      } catch {}
+    }
+  }
+
+  private policeFifo(): void {
     if (this.sliceOrder.length === 0) return;
     let anyProgress = true;
     let loops = 0;
@@ -335,34 +340,61 @@ export class ShaperScheduler {
     }
   }
 
-  private policeDrr(nowNs: bigint): void {
-    if (this.sliceOrder.length === 0) return;
+  /**
+   * Deficit round robin over the slice queues, weighted by each slice's limit (its quantum is
+   * 20 ms of traffic at the limit). A chunk leaves only when the slice's own bucket AND the link
+   * both have tokens, so a slice is still held to its limit, and a slice sending less than its
+   * share never waits behind another slice's backlog. When the link runs out of tokens mid-visit
+   * the visit resumes on the next tick without a second quantum.
+   */
+  private transmitDrr(nowNs: bigint): void {
+    const n = this.sliceOrder.length;
+    if (n === 0) return;
 
-    for (const code of this.sliceOrder) {
-      const slice = this.slices.get(code);
+    let visitsWithoutSend = 0;
+    while (visitsWithoutSend < n) {
+      const slice = this.slices.get(this.sliceOrder[this.drrIndex % n]!);
       if (!slice || slice.queue.getDepthCount() === 0) {
-        if (slice) slice.drrDeficit = 0;
+        if (slice) {
+          slice.drrDeficit = 0;
+          slice.drrCredited = false;
+        }
+        this.drrIndex = (this.drrIndex + 1) % n;
+        visitsWithoutSend++;
         continue;
       }
 
-      slice.drrDeficit += slice.drrQuantum;
+      if (!slice.drrCredited) {
+        // Cap the deficit so a slice held back by its own bucket can't bank credit forever.
+        slice.drrDeficit = Math.min(slice.drrDeficit + slice.drrQuantum, slice.drrQuantum + MAX_CHUNK_BYTES);
+        slice.drrCredited = true;
+      }
 
+      let sent = false;
+      let waitingForDeficit = false;
       while (slice.queue.getDepthCount() > 0) {
-        const nextChunk = slice.queue.peek();
-        if (!nextChunk) break;
-
-        const chunkLen = nextChunk.data.length;
-        if (slice.drrDeficit >= chunkLen && slice.bucket.tryConsume(chunkLen)) {
-          slice.drrDeficit -= chunkLen;
-          slice.queue.dequeue();
-          const enqueued = this.rootQueue.enqueue(nextChunk);
-          if (!enqueued) {
-            slice.meter.recordRootDrop(chunkLen);
-          }
-        } else {
+        const chunk = slice.queue.peek()!;
+        const len = chunk.data.length;
+        if (slice.bucket.getTokens() < len) break; // slice at its own limit this tick
+        if (slice.drrDeficit < len) {
+          waitingForDeficit = true; // turn used up; credit carries to the next visit
           break;
         }
+        if (this.rootBucket.getTokens() < len) return; // link busy: resume this visit next tick
+        slice.bucket.tryConsume(len);
+        this.rootBucket.tryConsume(len);
+        slice.drrDeficit -= len;
+        slice.queue.dequeue();
+        this.send(chunk, nowNs);
+        sent = true;
       }
+
+      if (slice.queue.getDepthCount() === 0) slice.drrDeficit = 0;
+      slice.drrCredited = false;
+      this.drrIndex = (this.drrIndex + 1) % n;
+      // Stop after a full round in which no slice could use the link. A slice that is only short of
+      // deficit gains a quantum per visit, so it will send within a few rounds: not idle.
+      visitsWithoutSend = sent || waitingForDeficit ? 0 : visitsWithoutSend + 1;
     }
   }
 

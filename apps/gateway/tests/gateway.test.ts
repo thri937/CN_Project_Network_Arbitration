@@ -419,6 +419,55 @@ describe('Gateway Unit Tests', () => {
       expect(ratio).toBeGreaterThan(1.7);
       expect(ratio).toBeLessThan(2.3);
     });
+
+    // Two slices flood past the link; a light slice sends one probe. Returns how many 20 ms ticks
+    // the probe took to leave (100 = never: it was dropped or still queued).
+    const ticksForLightProbe = (rootDiscipline: 'fifo' | 'drr') => {
+      const scheduler = new ShaperScheduler({ totalCapacityKbps: 1000, reservedCapacityKbps: 50, rootDiscipline });
+      scheduler.registerSlice({ ...dummySlices[0]!, code: 'light', baselineKbps: 60, currentLimitKbps: 60 });
+      scheduler.registerSlice({ ...dummySlices[0]!, code: 'heavy1', baselineKbps: 700, currentLimitKbps: 700 });
+      scheduler.registerSlice({ ...dummySlices[0]!, code: 'heavy2', baselineKbps: 500, currentLimitKbps: 500 });
+      const sink = { write: () => true, on: () => {}, end: () => {} } as any;
+      for (const code of ['heavy1', 'heavy2']) {
+        scheduler.addSession(
+          new LoadSession({ sessionId: code, deviceId: code, sliceCode: code, initialRateKbps: 1000, mode: 'local', res: sink, onClose: () => {} }),
+        );
+      }
+      for (let i = 0; i < 100; i++) scheduler.step(0.02); // 2 s: the backlog builds
+
+      let sent = false;
+      scheduler.onTransmitProbe = () => {
+        sent = true;
+      };
+      scheduler.enqueueProbeChunk('light', { sliceCode: 'light', data: Buffer.alloc(64), isProbe: true, enqueuedAtNs: 0n });
+      for (let i = 1; i <= 100; i++) {
+        scheduler.step(0.02);
+        if (sent) return i;
+      }
+      return 100;
+    };
+
+    it('drr shares an overloaded link in proportion to the limits, small limits included', () => {
+      const scheduler = new ShaperScheduler({ totalCapacityKbps: 1000, reservedCapacityKbps: 50, rootDiscipline: 'drr' });
+      const limits: Record<string, number> = { a: 60, b: 380, c: 1000 }; // 1,440 kbps of limits on 950
+      const bytes: Record<string, number> = { a: 0, b: 0, c: 0 };
+      for (const [code, limit] of Object.entries(limits)) {
+        scheduler.registerSlice({ ...dummySlices[0]!, code, baselineKbps: limit, currentLimitKbps: limit });
+        const res = { write: (c: Buffer) => ((bytes[code]! += c.length), true), on: () => {}, end: () => {} } as any;
+        scheduler.addSession(new LoadSession({ sessionId: code, deviceId: code, sliceCode: code, initialRateKbps: 2 * limit, mode: 'local', res, onClose: () => {} }));
+      }
+      for (let i = 0; i < 500; i++) scheduler.step(0.02); // 10 s
+      for (const [code, limit] of Object.entries(limits)) {
+        const kbps = (bytes[code]! * 8) / 10 / 1000;
+        const share = (950 * limit) / 1440;
+        expect(Math.abs(kbps - share) / share).toBeLessThan(0.05);
+      }
+    });
+
+    it('drr isolates a light slice from flooding slices; the shared fifo does not', () => {
+      expect(ticksForLightProbe('drr')).toBeLessThanOrEqual(2);
+      expect(ticksForLightProbe('fifo')).toBeGreaterThanOrEqual(10);
+    });
   });
 
   describe('4. Dynamic Limit Change and Idempotency', () => {

@@ -1,40 +1,51 @@
 # Controller (`@cn/controller`)
 
-The controller is the **brain**. It is the backend of the original simulated project
-(`CN/backend`), copied over with its business rules **unchanged**. The only new piece is a network
-adapter that talks to the real gateway instead of the simulator.
+The controller is the **brain**. It reads measurements from the gateway, decides which slices to
+slow down when the link is overloaded, applies the decision, and records everything.
+
+**Technology:**
+- Node.js 22+ with Express 4 (REST API under `/api/v1`, OpenAPI docs at `/api/docs`);
+- Zod (validation);
+- Socket.IO (live updates to the dashboard);
+- Pino (logs);
+- JSON Web Tokens (sessions);
+- an in-memory datastore saved to `apps/controller/.data/`.
 
 Every 2 seconds it:
 
-1. **Reads** each slice's measured demand, throughput, latency and loss from the gateway.
-2. **Detects contention**: total demand above 102 % of the 950 kbps link for 2 samples in a row.
-3. **Decides** with the CBHA engine (Convex Business-Harm Arbitration). It works out how much
-   traffic must be shed and takes it in small steps from whichever slice loses the least business
-   value per kbps. It never cuts a slice past its policy ceiling or below its contractual floor.
-4. **Applies** the plan in two phases (save the decision, then set the limits on the gateway, then
-   check what the gateway enforced) and writes a plain-English explanation and an audit entry.
-5. **Recovers**: once contention clears (3 normal samples), each cut slice is restored after its
-   recovery window. The window is 30 s for zero tolerance, 2 min for low, 10 min for moderate and
-   30 min for high. An administrator can override and restore at once.
+1. **Reads** each slice's measured demand, carried rate, latency and loss from the gateway
+   (`GET /v1/stats`).
+2. **Detects contention:** total demand above 102 % of the 950 kbps link for 2 samples.
+3. **Decides** with the CBHA engine (Convex Business-Harm Arbitration).
+   - The shortage is the carried traffic minus 97 % of the link.
+   - It is taken in small steps from whichever slice loses the least business value per kbps.
+   - No slice goes past its compliance ceiling or below its contractual floor.
+4. **Applies** the plan in two phases: save the decision, set the limits on the gateway, then
+   check what the gateway enforced. It also writes a plain-English explanation and an audit
+   entry.
+5. **Recovers:** once contention clears (3 normal samples), each cut slice is restored when its
+   recovery window ends. The window is 2 min for low tolerance, 10 min for moderate and 30 min
+   for high. An administrator can override and restore at once.
 
-## What is new compared with the simulated project
+## Code map
 
-| File | Purpose |
+| Path | What it is |
 |---|---|
-| `src/telemetry/adapters/gateway.telemetry.adapter.ts` | The real-network adapter: `GET /v1/stats` → slice telemetry, `PUT …/limit` ← decisions. Selected with `TELEMETRY_PROVIDER=gateway` |
-| `src/testbed/catalogue.ts` | The 7 departments and 7 slices, scaled to the link size. Shared by the seed and `demo:local` |
-| `src/testbed/experimentRecorder.ts` | Writes experiment CSVs from the gateway's measurements; unknown values stay blank |
-| `src/controllers/testbed.controller.ts`, `src/routes/testbed.routes.ts` | `/api/v1/testbed/*`: status, devices, join codes, operator demand, scenarios, arbitration on/off, experiments |
-| `src/scripts/seed.ts` | Seeds the testbed and pushes the slice catalogue to the gateway |
+| `src/domain/policyEngine.ts` | Business priority score (0–100) from department facts |
+| `src/domain/arbitration/` | The CBHA engine: `harm.ts`, `solver.ts` (water-filling), `alternatives.ts` (four rival plans), `engine.ts` (plan and explanation) |
+| `src/services/` | Contention detection, arbitration, two-phase allocation, recovery, audit, notifications |
+| `src/jobs/scheduler.ts` | The 2 s control loop and 5 s recovery sweep |
+| `src/telemetry/adapters/gateway.telemetry.adapter.ts` | The link to the gateway: stats in, limits out, catalogue, devices, operator demand |
+| `src/testbed/catalogue.ts` | The 7 departments and 7 slices (one definition for the seed, the demo and the gateway) |
+| `src/testbed/experimentRecorder.ts` | Writes every gateway window to CSV; unknown values stay blank |
+| `src/controllers/testbed.controller.ts` | `/api/v1/testbed/*`: status, devices, join codes, operator demand, scenarios, arbitration on/off, recording download |
+| `src/scripts/seed.ts` | Creates the testbed (refuses a 10 Gbps setting by mistake) |
 
-**Unchanged** (identical to the simulated project): `src/domain/policyEngine.ts`,
-`src/domain/arbitration/*`, `src/constants/tunables.ts`, `src/constants/enums.ts` and
-`src/models/policy.model.ts`. These hold the weights, ceilings, harm curve, solver, contention
-thresholds and cooldown. The algorithm is explained in
-[`docs/source/ALGORITHM.md`](../../docs/source/ALGORITHM.md).
+**Units:** the engine doesn't care about units. Fields are named `…Mbps`, but in this testbed
+**1 unit = 1 kbps**, and every sentence it writes says kbps.
 
-**Units:** fields are still named `…Mbps` because the engine doesn't care about units. In this
-testbed **1 unit = 1 kbps**.
+The controller resends the slice catalogue whenever the gateway starts or restarts, including
+any limits in force. So the two can be started in any order.
 
 ## Run and test
 
@@ -52,15 +63,12 @@ npm run dev
 npm test -w @cn/controller
 ```
 
-- **Run** (`npm run dev`): the API is on <http://localhost:4000> and the Swagger docs are at
-  <http://localhost:4000/api/docs>.
-- **Test** (`npm test -w @cn/controller`): all the original tests, plus:
-  - the gateway adapter;
-  - golden engine checks on the 7-slice testbed;
-  - a closed-loop test that runs the real gateway in-process.
+The tests include the engine (optimality, safety rules), the gateway adapter, the testbed
+catalogue, and a closed-loop test that runs the real gateway in-process.
 
 ## Sign-in
 
-Local sign-in with no passwords, for use on your own network only. Use the **Admin**,
-**Manager** or **Viewer** buttons, or type `admin`, `manager` or `viewer`. Managers can run
-scenarios and toggle arbitration; admins can also override decisions and edit policies.
+Local sign-in with no passwords, for your own network only. Use **Sign in as Admin, Manager or
+Viewer**, or type a name.
+- **Managers** run scenarios, set device demand and turn arbitration on or off.
+- **Admins** can also override decisions, edit the policy and read the audit log.

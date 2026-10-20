@@ -62,7 +62,7 @@ The system separates concerns across six modular packages organized in an npm mo
 | `@cn/controller` | `apps/controller` | Control plane: policy engine, contention detection, CBHA arbitration, two-phase apply, audit trail, OpenAPI. | Node.js 24, TypeScript, Express, Zod, Pino |
 | `@cn/gateway` | `apps/gateway` | Data plane: per-slice token bucket shaping, load streaming, active probe queuing, HTTP forward proxy, southbound server. | Node.js 24, TypeScript, `node:http`, `ws`, Zod |
 | `@cn/portal` | `apps/portal` | Department user interface: join code authentication, demand slider/presets, live charts, SLA chips, degradation alerts. | React 18, Vite 5, TypeScript, Tailwind CSS, Recharts |
-| `@cn/dashboard` | `apps/dashboard` | Operator console: interactive SVG topology map, QR code drawer, device manager, scenario runner, CSV recorder. | React 18, Vite 5, TypeScript, Tailwind CSS, Recharts |
+| `@cn/dashboard` | `apps/dashboard` | Operator site: slices and devices (measured values, QR codes, demand presets, scenarios, arbitration on/off, recording download), contention, decisions, live charts, and the rules (slice contracts, departments, policy, audit log). | React 18, Vite 5, TypeScript, Tailwind CSS, Recharts |
 | `@cn/agent` | `apps/agent` | Headless slice client: CLI and standalone `.exe` for automated testbed generation and multi-machine testing. | Node.js 24, TypeScript, Node Single Executable Application |
 | `@cn/shared` | `packages/shared` | Shared contracts: Zod schemas, TypeScript interfaces, error types, bandwidth formatters (`formatBandwidth`). | TypeScript, Zod |
 

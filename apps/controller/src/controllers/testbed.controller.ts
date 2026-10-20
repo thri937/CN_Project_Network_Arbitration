@@ -95,7 +95,9 @@ export function createTestbedController(deps: TestbedControllerDeps) {
   let recording: RecordingInfo | null = null;
   let recorder: ExperimentRecorder | null = null;
 
-  if (gateway) {
+  // Off in tests and demo:local (it writes its own CSV): TESTBED_RECORDING=false.
+  const recordingEnabled = process.env.NODE_ENV !== 'test' && process.env.TESTBED_RECORDING !== 'false';
+  if (gateway && recordingEnabled) {
     fs.mkdirSync(EXPERIMENTS_DIR, { recursive: true });
     const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
     const file = `${stamp}-session.csv`;

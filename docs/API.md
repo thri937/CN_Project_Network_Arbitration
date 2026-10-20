@@ -145,24 +145,24 @@ Lists all devices currently bound to slices.
 
 ---
 
+### 1.6b `DELETE /v1/devices/:id`
+Removes a device: ends its load sessions, sends `{ "type": "unbound" }` to its open pages and forgets it. `404` if unknown.
+
+---
+
 ### 1.7 `POST /v1/slices/:code/demand`
-Allows the operator to remotely override the demand rate of connected devices on that slice over WebSockets.
+Operator remote control. Every device joined to the slice switches to this demand: its load
+stream changes rate, and its page or agent is told over the WebSocket (`{ "type": "operator-demand", "rateKbps": … }`).
 
 **Request Body:**
 ```json
-{
-  "rateKbps": 280,
-  "mode": "local"
-}
+{ "kbps": 280, "mode": "local" }
 ```
+`mode` is optional (`local` or `internet`).
 
 **Response (200 OK):**
 ```json
-{
-  "broadcasted": true,
-  "targetSlice": "canteen-signage",
-  "rateKbps": 280
-}
+{ "success": true, "sliceCode": "canteen-signage", "demand": { "kbps": 280, "mode": "local" } }
 ```
 
 ---
@@ -244,39 +244,21 @@ Optional HTTP/HTTPS forward proxy, off by default (`GATEWAY_PROXY_ENABLED=false`
 
 ---
 
-## 4. Controller Testbed REST API (`0.0.0.0:4000/api/v1/testbed/*`)
+## 4. Controller testbed API (`:4000/api/v1/testbed`)
 
-### 4.1 `GET /api/v1/testbed/status` (VIEWER+)
-Returns overall testbed operational health, detected LAN/hotspot IPs, ISP speed test status, and connected device counts.
+Every call needs a signed-in session (`Authorization: Bearer <token>`; the dashboard sends it).
+Bandwidth is in kbps.
 
----
+| Call | Role | What it does |
+|---|---|---|
+| `GET /status` | Viewer | Gateway reachable?, capacity, the gateway's latest per-slice stats, laptop addresses (hotspot first, virtual adapters marked), department-page port, arbitration on/off, current recording file and row count |
+| `GET /devices` | Viewer | Devices joined to slices (name, address, slice, demand, last seen) |
+| `GET /recording.csv` | Viewer | This session's recording: every 2 s gateway window, labelled with the last scenario run |
+| `DELETE /devices/:id` | Manager | Remove a device from its slice; its load stops and its page returns to the join screen. Audited |
+| `POST /slices/:id/join-code/rotate` | Manager | New join code for a slice; devices already joined stay joined |
+| `POST /slices/:id/demand` | Manager | `{ "kbps": 140 }`: the slice's devices switch to this demand (operator remote control) |
+| `POST /scenarios/:name/run` | Manager | `IDLE`, `TC1`…`TC5`: set every joined device's demand to that pattern (fractions of baseline) |
+| `PUT /arbitration` | Manager | `{ "enabled": false }`: automatic arbitration off or on, for the TC6 comparison. Audited |
 
-### 4.2 `GET /api/v1/testbed/devices` & `DELETE /api/v1/testbed/devices/:id` (MANAGER+)
-Inspects connected testbed devices or forces unbinding of an inactive device.
-
----
-
-### 4.3 `POST /api/v1/testbed/slices/:id/join-code/rotate` (MANAGER+)
-Rotates a slice's 6-character join code and updates the QR code.
-
----
-
-### 4.4 `POST /api/v1/testbed/scenarios/:name/run` (MANAGER+)
-Automates running test cases `TC1` through `TC6` by broadcasting operator demand presets across all slices.
-
----
-
-### 4.5 `PUT /api/v1/testbed/arbitration` (MANAGER+)
-Enables or disables automatic CBHA runtime arbitration (for A/B testing).
-
-**Request Body:**
-```json
-{ "enabled": false }
-```
-
----
-
-### 4.6 Experiment Recorder Endpoints
-- `POST /api/v1/testbed/experiments` `{ "name": "ab-comparison-run" }` — Starts logging telemetry ticks to CSV.
-- `POST /api/v1/testbed/experiments/:id/stop` — Halts active recording.
-- `GET /api/v1/testbed/experiments/:id/download` — Downloads the generated CSV file.
+The gateway also has `DELETE /v1/devices/:id` on the southbound API, which the controller uses
+for the device removal above.

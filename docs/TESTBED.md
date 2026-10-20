@@ -101,31 +101,39 @@ Note it here rather than changing the targets.
 
 ### 6.1 `demo:local`: one laptop, loopback (no Wi-Fi), 20 October 2026
 
-All 6 automated test cases passed (`experiments/2026-10-20T16-25-02-demo-local-summary.md`).
-TC6, lunch-hour-rush load, means over 20 two-second windows per phase, measured after a 25 s
-warm-up:
+All 6 automated test cases passed. The data and every check are in
+`paper/results/fifo-demo-local.csv` and `paper/results/fifo-demo-local-summary.md`.
 
-| Slice | Latency p95 OFF | Latency p95 ON | Loss OFF | Loss ON | Limit ON |
-|---|---:|---:|---:|---:|---:|
-| Patient Telemetry (Clinic) | 512 ms | **29 ms** | 4.68 % | **0 %** | 60 kbps (never cut) |
-| Factory Automation | 511 ms | **29 ms** | 15.93 % | **0 %** | 380 kbps (not cut) |
-| Lab Instrumentation | 508 ms | **31 ms** | 10.24 % | **0 %** | 180 kbps (not cut) |
-| Warehouse Operations | 509 ms | 452 ms | 13.89 % | 4.50 % | 123 kbps (−23 %) |
-| CCTV | 630 ms | 473 ms | 15.52 % | 15.96 % | 203 kbps (−15 %) |
-| Office Wi-Fi | 575 ms | 477 ms | 35.55 % | 31.35 % | 220 kbps (−31 %) |
-| Canteen Signage | 947 ms | 577 ms | 59.55 % | 90.26 % | 28 kbps (−80 %, its floor) |
+TC6 used the lunch-hour-rush load: 25 s warm-up, then 40 s measured per phase (20 two-second
+windows), arbitration off then on. The table gives means over the measured windows.
 
-**What it shows.**
-- With arbitration **off**, all slices share one overflowing queue: every slice waits about half
-  a second, and even the Clinic loses 4.7 % of its traffic.
-- With it **on**, the engine cuts the four cheapest slices, and carried traffic fits the link
-  again. Clinic, Factory and Lab drop to ~29 ms with no loss.
-- The cut slices take the loss instead: the Canteen asks for ten times its 28 kbps floor, so
-  90 % of its traffic is dropped.
-- This is loopback, so it measures the gateway and the control loop, not Wi-Fi.
+| Slice | Latency p95 off | Latency p95 on | Loss off | Loss on | Carried on | Limit on |
+|---|---:|---:|---:|---:|---:|---:|
+| Patient Telemetry (Clinic) | 503 ms | **23 ms** | 5.62 % | **0 %** | 34 kbps | 60 kbps (never cut) |
+| Factory Automation | 509 ms | **22 ms** | 21.47 % | **0 %** | 210 kbps | 380 kbps (not cut) |
+| Lab Instrumentation | 505 ms | **22 ms** | 14.99 % | **0 %** | 100 kbps | 180 kbps (not cut) |
+| Warehouse Operations | 507 ms | 475 ms | 18.29 % | 5.23 % | 122 kbps | 122 kbps (−24 %) |
+| CCTV | 626 ms | 479 ms | 17.53 % | 14.88 % | 205 kbps | 204 kbps (−15 %) |
+| Office Wi-Fi | 573 ms | 476 ms | 19.81 % | 31.19 % | 221 kbps | 221 kbps (−31 %) |
+| Canteen Signage | 949 ms | 415 ms | 65.15 % | 90.03 % | 28 kbps | 28 kbps (−80 %, floor) |
 
-### 6.2 Hotspot run (to do)
+**What it shows:**
+- **Arbitration off.** All slices share one overflowing queue: every slice waits about half a
+  second, and even the Clinic loses 5.6 % of its traffic.
+- **Arbitration on.** The engine cuts the four cheapest slices, so carried traffic fits the link
+  again. Clinic, Factory and Lab drop to about 22 ms with no loss.
+- **The cut slices take the loss.** The Canteen asks for ten times its 28 kbps floor, so 90 % of
+  its traffic is dropped.
+- **Scope.** This is loopback, so it measures the gateway and the control loop, not Wi-Fi.
 
-Repeat TC6 with real phones on the hotspot. Use the dashboard's **experiment recorder** with one
-recording per phase (e.g. `TC6-OFF`, `TC6-ON`), wait ~25 s after each switch before recording,
-then run `npm run experiment:summary -- experiments/<file>.csv`. Put the table here.
+### 6.2 Hotspot run (to do with real phones)
+
+Join the seven departments from phones, then run TC3 with automatic arbitration off for a minute
+and on for a minute (see RUNBOOK Act 5). Download the CSV from the dashboard's **Recording** box
+and run:
+
+```bash
+npm run experiment:summary -- experiments/<file>-session.csv
+```
+
+Put the table here.

@@ -48,6 +48,7 @@ Object.assign(process.env, {
   CAPACITY_TICK_MS: '2000',
   CONTENTION_SCAN_MS: '2000',
   LOG_LEVEL: 'warn',
+  TESTBED_RECORDING: 'false',
 });
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));

@@ -58,7 +58,8 @@ queue.
 | `GET /v1/stats` | The **last completed** 2 s window for every slice. Read-only: any number of readers see the same numbers |
 | `PUT /v1/slices/:code/limit` | Set a slice's limit. Idempotent; takes effect on the next 20 ms tick |
 | `GET /v1/devices` | Devices that have joined |
-| `POST /v1/slices/:code/demand` | Operator remote control of a slice's devices |
+| `DELETE /v1/devices/:id` | Remove a device: its load stops and its page goes back to the join screen |
+| `POST /v1/slices/:code/demand` | Operator remote control: the slice's devices switch to this demand (every device follows it) |
 
 **Devices** (`:8080`):
 - `POST /portal-api/join`

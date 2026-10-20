@@ -1,4 +1,4 @@
-# demo:local results — 2026-10-20T16:28:53.410Z
+# demo:local results — 2026-10-20T20:49:16.570Z
 
 Loopback run (one laptop, no Wi-Fi). 1 Mbps link (950 kbps offered), 2 s measurement windows,
 seeded 7-slice testbed. TC6: 25 s warm-up, then 40 s measured, arbitration OFF then ON,
@@ -12,7 +12,7 @@ same lunch-hour-rush load.
   - ✓ every slice carries its demand (±10 %)
   - ✓ loss under 1 % on every slice
 - **TC2 Canteen flood contained: PASS**
-  - ✓ Canteen held at its 140 kbps limit (used 138 kbps)
+  - ✓ Canteen held at its 140 kbps limit (used 140 kbps)
   - ✓ no slice limit changed (current limits already fit the link)
   - ✓ other slices carry their demand (±10 %)
 - **TC3 Lunch-hour rush: PASS**
@@ -42,12 +42,12 @@ same lunch-hour-rush load.
 
 | Slice | Latency p95 OFF (ms) | Latency p95 ON (ms) | Loss OFF (%) | Loss ON (%) | Used OFF (kbps) | Used ON (kbps) | Limit ON (kbps) |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| Patient Telemetry | 512 | 29 | 4.68 | 0.00 | 33 | 34 | 60 |
-| Factory Automation | 511 | 29 | 15.93 | 0.00 | 177 | 210 | 380 |
-| Lab Instrumentation | 508 | 31 | 10.24 | 0.00 | 90 | 100 | 180 |
-| Warehouse Operations | 509 | 452 | 13.89 | 4.50 | 112 | 123 | 123.36 |
-| CCTV | 630 | 473 | 15.52 | 15.96 | 210 | 203 | 202.74 |
-| Office Wi-Fi | 575 | 477 | 35.55 | 31.35 | 215 | 220 | 220.4 |
-| Canteen Signage | 947 | 577 | 59.55 | 90.26 | 113 | 27 | 28 |
+| Patient Telemetry | 503 | 23 | 5.62 | 0.00 | 33 | 34 | 60 |
+| Factory Automation | 509 | 22 | 21.47 | 0.00 | 165 | 210 | 380 |
+| Lab Instrumentation | 505 | 22 | 14.99 | 0.00 | 86 | 100 | 180 |
+| Warehouse Operations | 507 | 475 | 18.29 | 5.23 | 106 | 122 | 122.44 |
+| CCTV | 626 | 479 | 17.53 | 14.88 | 206 | 205 | 204.2 |
+| Office Wi-Fi | 573 | 476 | 19.81 | 31.19 | 256 | 221 | 220.86 |
+| Canteen Signage | 949 | 415 | 65.15 | 90.03 | 98 | 28 | 28 |
 
-Raw data: `2026-10-20T16-25-02-demo-local.csv`
+Raw data: `2026-10-20T20-45-21-demo-local.csv`

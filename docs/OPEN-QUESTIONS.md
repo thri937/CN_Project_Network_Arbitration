@@ -22,4 +22,4 @@ This document logs design decisions, hardware/OS constraints, and items requirin
 ## 6. Known gaps (not built yet)
 - **Proxy mode does not shape traffic.** `:8888` forwards joined devices' traffic unshaped (see LIMITATIONS §2.3), so TC9 cannot pass yet.
 - **Upload load** is not implemented; load sessions are download only.
-- **Operator control** has no opt-out switch on the portal.
+- **Operator control** has no opt-out switch: every device follows demand set from the dashboard. That is what makes the scenario buttons work.

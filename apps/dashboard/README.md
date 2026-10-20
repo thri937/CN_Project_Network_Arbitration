@@ -1,26 +1,53 @@
 # Dashboard (`@cn/dashboard`)
 
-The **operator's** web app. It is the frontend of the original simulated project, plus a
-**Testbed** page for the real network. Open <http://localhost:5173> while `npm run dev` is running
-and sign in with the **Admin** or **Manager** button.
+The **operator's** website. Open <http://localhost:5173> while `npm run dev` is running, then
+press **Sign in as Admin** (or Manager, or Viewer).
 
-## The Testbed page
+**Technology:**
+- React 18 with Vite 5;
+- TanStack Query (server data, polling every 2 s);
+- React Router;
+- Tailwind CSS;
+- Recharts;
+- the `qrcode` package;
+- Socket.IO client.
 
-- **Topology:** the laptop gateway in the middle and the 7 slices around it. Each slice shows its
-  live health colour, connected devices, and used vs limit in kbps.
-- **Join codes and QR codes:** one per slice, linking to `http://<laptop-ip>:8080/join?code=…`.
-  The address picker lists the laptop's networks: hotspot first, then Wi-Fi, with virtual adapters
-  (VirtualBox, Hyper-V) marked as unusable by phones.
-- **Devices:** every joined device with its IP, slice, rate and last-seen time; unbind a device.
-- **Operator control:** set a slice's demand remotely; its devices follow. Scenario buttons
-  TC1–TC5 set the standard demand patterns.
-- **Automatic arbitration ON/OFF:** the switch for the A/B test (TC6). Each change is audited.
-- **Experiment recorder:** Start/Stop, then download the CSV. It records the gateway's own
-  measurements every 2 s. Unknown values stay blank.
+## Pages
 
-All the original pages still work: Dashboard, Runtime Monitoring, Contention Events, Arbitration
-Decisions (with the full "why" for each decision), Slices, Departments, Business Policies,
-Reports, Analytics, Audit Logs and Users. Bandwidth is shown in kbps.
+**Testbed**
+
+- **Slices and devices** (the home page):
+  - **Status:** gateway status, link use (carried vs demand vs 950 kbps), devices joined, and
+    the **automatic arbitration on/off** switch (the TC6 comparison).
+  - **Slices table:** each slice's demand, limit (against baseline), carried rate, latency
+    p95 against target, loss and state ("Cut 34 %", "Never cut", "Up to 20 % cut"). These are
+    exactly the gateway's measurements; anything not measured shows as —.
+  - **Selected slice panel:** its join code and **QR code** for
+    `http://<laptop address>:8080/join?code=…`. The address picker puts the hotspot first and
+    marks virtual adapters. There are demand presets (Idle, Normal, Peak, Flood) for that
+    slice's devices, and a "New join code" button.
+  - **Test scenarios:** All idle and TC1–TC5. Each button sets the demand of every joined
+    device. There are also written instructions for TC6.
+  - **Devices:** name, address, slice, demand and last seen, with **Remove**.
+  - **Recording:** every 2 s gateway window of the session is saved to
+    `experiments/<time>-session.csv`, labelled with the last scenario. **Download CSV**.
+- **Contention:** open and past contention events, and the detector's settings.
+- **Decisions:** every arbitration decision. Each one opens a full explanation: the reasons,
+  per-slice outcome and factors, the four rejected alternatives priced on the same scale, the
+  policy in force and the audit trail. **Arbitrate now** (managers) runs the engine at once on
+  an open contention.
+- **Live charts:** one slice's demand, limit, carried rate, latency and loss over the last few
+  minutes.
+- **Department page:** opens the phone page on this laptop.
+
+**Rules**
+
+- **Slice contracts:** baselines, floors and SLA targets.
+- **Departments:** the business facts behind every decision.
+- **Business policy:** the score weights and engine tuning, versioned.
+- **Audit log** (admin): every decision, override and setting change.
+
+All bandwidth is shown in kbps. The theme is light by default; the moon button switches to dark.
 
 ## Develop
 
@@ -32,4 +59,4 @@ npm run dev -w @cn/dashboard
 npm run build -w @cn/dashboard
 ```
 
-The QR codes use the standard `qrcode` npm package.
+The dev server proxies `/api` and `/realtime` to the controller on port 4000.

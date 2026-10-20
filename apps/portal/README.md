@@ -31,6 +31,9 @@ The joined slice is stored in **sessionStorage**, which is separate for every br
 several tabs on one laptop can each be a different department. Closing the tab leaves the slice,
 and you join again with the code. The nickname is remembered across tabs.
 
+If the gateway restarts, the page joins the same slice again by itself. If the operator removes
+the device on the dashboard, the page goes back to the join screen.
+
 ## Develop
 
 ```bash

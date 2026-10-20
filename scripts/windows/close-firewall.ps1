@@ -1,16 +1,19 @@
-# close-firewall.ps1
-# Run as Administrator in PowerShell to remove testbed firewall rules
+# close-firewall.ps1 — remove the rules open-firewall.ps1 added.
+# Run in PowerShell opened with "Run as administrator":
+#   powershell -ExecutionPolicy Bypass -File scripts\windows\close-firewall.ps1
 
-Write-Host "Removing firewall rules for CN Real Network Arbitration Testbed..." -ForegroundColor Cyan
-
-$isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+$isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole(
+  [Security.Principal.WindowsBuiltInRole]::Administrator)
 if (-not $isAdmin) {
-  Write-Warning "This script requires Administrator privileges. Please re-run PowerShell as Administrator."
+  Write-Host "Please run this in PowerShell opened with 'Run as administrator'." -ForegroundColor Yellow
   exit 1
 }
 
-Remove-NetFirewallRule -DisplayName "CN-Testbed-Gateway-8080" -ErrorAction SilentlyContinue
-Remove-NetFirewallRule -DisplayName "CN-Testbed-Proxy-8888" -ErrorAction SilentlyContinue
-Remove-NetFirewallRule -DisplayName "CN-Testbed-Controller-4000" -ErrorAction SilentlyContinue
-
-Write-Host "Firewall rules removed successfully." -ForegroundColor Green
+foreach ($name in 'CN-Testbed-Gateway-8080', 'CN-Testbed-Proxy-8888', 'CN-Testbed-Dashboard-4000', 'CN-Testbed-Controller-4000') {
+  $rule = Get-NetFirewallRule -DisplayName $name -ErrorAction SilentlyContinue
+  if ($rule) {
+    $rule | Remove-NetFirewallRule
+    Write-Host "  removed $name" -ForegroundColor Green
+  }
+}
+Write-Host "Done."

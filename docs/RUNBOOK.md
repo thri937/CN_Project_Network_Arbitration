@@ -1,145 +1,163 @@
-# Live Demonstration Runbook — CN Real Network Arbitration Testbed
+# Runbook: the live demo with phones on the hotspot
 
-This runbook provides step-by-step instructions for demonstrating the **5G CBHA Real-Network Arbitration Platform** to instructors, judges, and evaluators using real mobile devices over Windows 11 Wi-Fi.
+A step-by-step script for showing the testbed with real phones (or laptops, or browser tabs).
+It takes about 15 minutes.
 
 ---
 
-## 1. Pre-Flight Preparation Checklist (5 Minutes Before Demo)
+## 1. Before the demo (do this once, 10 minutes)
 
-1. **Verify Laptop Wi-Fi & Hotspot:**
-   - Ensure the Windows 11 laptop is connected to an upstream Wi-Fi network (or Ethernet).
-   - Open **Windows Settings → Network & internet → Mobile hotspot**.
-   - Set Network Band to **2.4 GHz or 5 GHz** (2.4 GHz has wider phone compatibility).
-   - Toggle Mobile Hotspot to **On**.
-2. **Open Firewall Rules (Administrator):**
-   ```powershell
-   # Run in an elevated PowerShell session:
-   cd 'D:\CN project\CN project\CN_Real_Network_arbitration'
-   .\scripts\windows\open-firewall.ps1
+1. **Install and build** (in the project folder):
+   ```bash
+   npm install
    ```
-3. **Verify Environment Configuration:**
-   ```powershell
+   ```bash
    npm run setup
+   ```
+   ```bash
+   npm run build
+   ```
+   ```bash
    npm run seed
    ```
-4. **Display Join Information & QR Codes:**
-   ```powershell
-   npm run lan:info
+   `npm run build` matters: phones load the *built* department page from the gateway.
+2. **Open the firewall** for phones. Open PowerShell with **Run as administrator**, go to the
+   project folder, and run:
+   ```bash
+   powershell -ExecutionPolicy Bypass -File scripts\windows\open-firewall.ps1
    ```
-   *(This prints the detected hotspot IP `192.168.137.1` and a terminal QR code for the portal)*.
+   It opens TCP 8080 for the local network only, and removes any Windows rule that blocks
+   Node.js.
+3. **Turn on the hotspot:** Settings → Network & internet → **Mobile hotspot** → On. Share your
+   Wi-Fi connection. In *Properties*, choose the 2.4 GHz band if a phone can't see the network.
+   Windows allows up to **8 devices**.
+4. **Connect the phones** to the hotspot. Turn off mobile data on each phone, so it uses the
+   hotspot, and set its screen to stay on for 10 minutes.
+
+**Want a clean start?** Stop the servers, delete `apps/controller/.data`, and run
+`npm run seed` again.
 
 ---
 
-## 2. Launching the Platform
+## 2. Start
 
-Start all four components in labeled development mode:
-```powershell
+```bash
 npm run dev
 ```
 
-Verify that all subsystems report online:
-- `[gate]` Slice Gateway listening on `0.0.0.0:8080` (Portal) and `127.0.0.1:9090` (Southbound).
-- `[ctrl]` Controller listening on `0.0.0.0:4000`.
-- `[dash]` Dashboard available at `http://localhost:5173/testbed`.
+Wait until the terminal shows the gateway's `Online` lines and the controller is listening
+(about 10 s).
 
-Open your browser to the operator console:
-👉 **`http://localhost:5173/testbed`**
+On the laptop, open <http://localhost:5173> and press **Sign in as Admin**. The home page is
+**Slices and devices**. The **Gateway** box should say *Running*.
 
 ---
 
-## 3. Connecting Mobile Devices to Slices
+## 3. Join the seven departments
 
-Have participants or helpers connect their smartphones to the laptop's Mobile Hotspot:
+- **QR code:** on **Slices and devices**, click a slice row. The panel on the right shows its
+  QR code for `http://192.168.137.1:8080/join?code=…`. Check that **Address phones use** says
+  *hotspot*. Scan it with that department's phone and press **Join**.
+- **Or type it:** on the phone open `http://192.168.137.1:8080/join` and enter the code:
 
-1. **Join Hotspot Wi-Fi:**
-   - Scan for the laptop's hotspot SSID on the phone and enter the hotspot password.
-2. **Open Slice Portal:**
-   - Scan the QR code shown on the **Testbed Dashboard** (or navigate to `http://192.168.137.1:8080/join`).
-3. **Bind Devices to Departments:**
-   - Enter a Join Code for each device:
-     - Phone 1: **`CLN101`** (Clinic — Patient Telemetry)
-     - Phone 2: **`FAC201`** (Factory — Factory Automation)
-     - Phone 3: **`QAL301`** (Quality lab — Lab Instrumentation)
-     - Phone 4: **`WRH401`** (Warehouse — Warehouse Operations)
-     - Phone 5: **`SEC501`** (Security — CCTV)
-     - Phone 6: **`OFF601`** (Office IT — Office Wi-Fi)
-     - Phone 7: **`CAN701`** (Canteen — Canteen Signage)
-4. **Confirm Device Connection:**
-   - On the **Testbed Dashboard**, observe the interactive SVG topology map: nodes transition from gray to green with active device badges.
+  | Code | Department |
+  |---|---|
+  | `CLN101` | Clinic |
+  | `FAC201` | Factory |
+  | `LAB401` | Quality lab |
+  | `WHS301` | Warehouse |
+  | `SEC601` | Security |
+  | `OFF501` | Office IT |
+  | `CAN701` | Canteen |
 
----
-
-## 4. Live Demonstration Script
-
-### Act 1: Baseline Normal Operation (TC1)
-1. On each phone, tap **Normal (55%)**.
-2. **Observe Dashboard:**
-   - Total carried throughput is $\approx 814\text{ kbps}$ (under the 950 kbps offered capacity).
-   - Animated packet particles flow steadily towards all 7 slices.
-   - All SLA status chips are green (RTT $\approx 25\text{--}40\text{ ms}$, loss $0\%$).
-   - Contention state displays **`NORMAL`**.
-
-### Act 2: The Rogue Best-Effort Slice (TC2)
-1. On the **Canteen Phone**, tap **Flood (200%)** (requesting 280 kbps).
-2. **Observe Gateway Shaper:**
-   - Canteen's live throughput climbs to its **140 kbps** baseline limit and flatlines.
-   - The token bucket tail-drops the excess 140 kbps locally in Canteen's queue.
-   - **Explain to Evaluator:** "The shaper enforces slice limits at the gateway without needing arbitration because the total carried load ($\approx 877\text{ kbps}$) still fits within our 950 kbps link."
-
-### Act 3: Lunch-Hour Contention & CBHA Arbitration (TC3)
-1. Increase load across non-critical slices:
-   - Canteen: **Flood (200%)** ($280\text{ kbps}$)
-   - Office IT: **Peak (100%)** ($320\text{ kbps}$)
-   - Security CCTV: **Peak (100%)** ($240\text{ kbps}$)
-   - Warehouse: **Busy (80%)** ($128\text{ kbps}$)
-2. **Observe Contention Trigger (within ~4 seconds):**
-   - Demand reaches $\approx 1,309\text{ kbps}$ ($138\%$ of link capacity).
-   - Dashboard flashes **`CONTENTION DETECTED: SEVERE`**.
-   - CBHA solver executes marginal-harm water-filling optimization.
-3. **Observe Arbitration Outcome:**
-   - **Clinic (Patient Telemetry):** Zero degradation. Limit remains strictly at **60 kbps** (exempt from cuts).
-   - **Canteen:** Throttled down to its contractual floor (**28 kbps**, $-80\%$ degradation).
-   - **Office IT, CCTV, Warehouse:** Proportionally degraded based on downtime cost and compliance ceilings.
-   - **Factory:** Preserved at baseline because cheaper slices absorb the needed cut.
-4. **Observe Phone Screen (Canteen):**
-   - The Canteen portal displays an amber degradation banner:
-     *`⚠️ Degraded by CBHA — Limit lowered from 140 to 28 kbps to protect critical enterprise operations (Decision ARB-XXXX)`*.
-
-### Act 4: The Slicing Isolation Invariant (TC4 & TC5)
-1. Highlight to the evaluator that once CBHA arbitration takes effect, **Clinic packet loss returns to 0%** and latency falls well within its SLA target (< 150 ms).
-2. Tap **Step-Down Recovery (TC5)** on the dashboard (returning demand to 55%).
-3. Observe contention close after 3 consecutive clear samples. Automatic recovery is scheduled per department policy (2–30 min), or tap **Override** on the dashboard to instantly restore all slices to their baseline limits.
-
-### Act 5: Empirical A/B Proof (TC6)
-1. On the dashboard, toggle **Automatic Arbitration to OFF**.
-2. Trigger the lunch-hour rush. Start an experiment recording named `TC6-OFF`.
-3. Show the live chart: without arbitration, the shared root queue overflows, **causing Clinic and Factory latency to breach SLA limits (> 500 ms)** with measurable packet loss.
-4. Stop `TC6-OFF`. Toggle **Automatic Arbitration back to ON**. Start recording named `TC6-ON`.
-5. **Wait ~25 s** for the root queue to drain and reach steady-state.
-6. Show how CBHA instantly de-congests the bottleneck, restoring mission-critical latency (~29 ms) and 0% loss.
-
----
-
-## 5. Troubleshooting Guide
-
-### Issue 1: Phone Cannot Open `http://192.168.137.1:8080`
-- **Cause:** Windows Firewall blocking inbound traffic or wrong subnet.
-- **Fix:** Re-run `.\scripts\windows\open-firewall.ps1` as Administrator. Ensure the phone is connected to the laptop's Mobile Hotspot, not a cellular data network or separate Wi-Fi.
-
-### Issue 2: Phone Shows "Wi-Fi Has No Internet Access" Warning
-- **Cause:** Android and iOS perform captive-portal checks.
-- **Fix:** Select **"Keep Wi-Fi connection"** or **"Use as-is"**. The slice portal operates locally over the hotspot even if external internet routing is restricted.
-
-### Issue 3: Windows Mobile Hotspot Limit Exceeded
-- **Cause:** Windows 11 Mobile Hotspot limits connections to **8 simultaneous devices**.
-- **Fix:** If more than 7 client devices attempt to join, disconnect spare devices. You can also run secondary slices on the main laptop via browser tabs or `slice-agent.exe`.
-
-### Issue 4: Phone Screen Sleep Causing Slice Inactivity
-- **Cause:** Mobile operating systems throttle background WebSockets and timers when the screen locks.
-- **Fix:** Set screen lock timeout to 5–10 minutes during the demo, or keep the portal tab open in foreground.
-
-### Issue 5: Port Conflict on Port 4000, 8080, or 9090
-- **Fix:** Check running Node processes:
-  ```powershell
-  Get-Process node | Stop-Process -Force
+- **Fewer than 7 phones?** Fill the other departments with browser tabs on the laptop
+  (`http://localhost:8080/join`, one tab per department), or with the agent:
+  ```bash
+  npx tsx apps/agent/src/index.ts --code FAC201 --rate 209 --name factory-laptop
   ```
+
+Each phone starts sending at 55 % of its limit. The **Devices** list on the dashboard shows
+every device; the **Slices** table shows its demand, carried rate and measured latency.
+
+---
+
+## 4. The demo, act by act
+
+### Act 1: a normal day (TC1)
+Press **Run** on *TC1 Normal day*. Every slice sends 55 % of its limit, about 814 kbps on the
+950 kbps link.
+
+> "Everything fits. Every slice is at its full limit and within its latency target. Nothing is
+> cut."
+
+### Act 2: one department floods (TC2)
+Press **Run** on *TC2 Canteen flood*. The Canteen asks for 280 kbps, twice its limit.
+
+> "The Canteen's own limit holds it at 140 kbps. The rest still fits the link (about 877 kbps),
+> so nobody else is affected and the engine doesn't need to cut anything. The slice's own limit
+> already isolates it."
+
+### Act 3: the lunch-hour rush (TC3)
+Press **Run** on *TC3 Lunch-hour rush*: Canteen 200 %, Office and CCTV 100 %, Warehouse 80 %.
+
+> "Now demand is about 1,300 kbps on a 950 kbps link. Within about 4 seconds a contention opens,
+> and the engine decides who gives up bandwidth."
+
+Point at the **State** column:
+- the Canteen is cut towards its 28 kbps floor;
+- Office, CCTV and Warehouse are cut a little;
+- Clinic, Factory and Lab are not touched.
+
+Open **Decisions** and the newest decision. Read one sentence of the explanation and show the
+*Alternatives considered*. The "Priority Sort" plan had more harm.
+
+> "The Canteen is labelled URLLC, top priority in a normal network, but an outage costs £15 a
+> minute. The Quality lab is eMBB but regulated. We protect the lab."
+
+Show the Canteen phone: it explains its own cut.
+
+### Act 4: more than can be fixed (TC4)
+Press **Run** on *TC4 Everyone at peak*.
+
+> "1,480 kbps on 950. Even the deepest cuts the rules allow are not enough. The engine does not
+> break a rule to make it fit: the decision is PARTIAL and the operator is alerted. The Clinic is
+> still never cut."
+
+### Act 5: the proof (TC6, about 3 minutes)
+1. Press **Run** on *TC3*. Then turn **Automatic arbitration off**.
+2. Wait about a minute. On the Clinic phone, latency rises to around half a second and loss
+   appears, while its own limit hasn't changed.
+
+   > "Without arbitration the shared link overflows and everybody suffers, even the Clinic."
+3. Turn **Automatic arbitration on**. Within a few seconds the engine cuts the cheap slices.
+   After about 25 s the shared queue has drained and the Clinic's latency is back to tens of
+   milliseconds, with no loss.
+4. In the **Recording** box, press **Download CSV**. Every 2-second window of the demo is in it,
+   labelled with the scenario.
+
+On one laptop (`npm run demo:local`), this comparison measured:
+- Clinic p95 latency 503 ms → 23 ms, loss 5.6 % → 0 %;
+- Factory 509 ms → 22 ms;
+- Lab 505 ms → 22 ms.
+
+### Act 6: back to normal (TC5)
+Press **Run** on *TC5 Back to normal*. The contention closes after about 6 seconds. The cut
+slices return when their recovery window ends: 10 min for Office/CCTV, 30 min for the Canteen.
+To restore them at once, open the decision and press **Override** (admin), giving a reason. The
+override is in the **Audit log**.
+
+---
+
+## 5. Troubleshooting
+
+| Problem | Fix |
+|---|---|
+| Phone can't open the page | Check the phone is on the laptop's hotspot (not mobile data), and that you used the hotspot address (`npm run lan:info`). Re-run `open-firewall.ps1` as administrator. Turn off any VPN on the laptop |
+| Phone says "no internet" for the hotspot | Choose "stay connected"; the page works anyway |
+| QR code points at 10.x or 192.168.56.x | In the slice panel, pick the address marked *hotspot* |
+| A scenario button does nothing on a slice | That slice has no device joined. Only joined devices send traffic |
+| A phone stopped updating | The screen locked; mobile browsers pause pages. Unlock it; it rejoins by itself |
+| Gateway shows *Not reachable* | `npm run dev` isn't running, or failed. Look at the terminal. Port in use: close the old window, or end Node processes in Task Manager |
+| Numbers look ten times too big | `.env` has the wrong link size. It must be `NETWORK_TOTAL_CAPACITY_MBPS=1000`. Delete `apps/controller/.data` and run `npm run seed` |
+| Old decisions from yesterday | Normal: everything is kept. For a clean start, delete `apps/controller/.data` and run `npm run seed` |
+| More than 8 devices | Windows hotspot limit. Use browser tabs on the laptop for the extra departments |
