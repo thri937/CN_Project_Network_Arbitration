@@ -75,7 +75,7 @@ Only what the real-network testbed actually uses.
 | Tech | Why | Where |
 |---|---|---|
 | **LaTeX + pgfplots** | Conference paper; charts drawn from our data | `paper/` |
-| **python-pptx + Chrome** | PowerPoint copy of the deck | `Real-Network-Testbed-Slides.pptx` |
+| **python-pptx + Chrome** | PowerPoint copy of the deck | `presentation/Real-Network-Testbed-Slides.pptx` |
 | **Python + Windows voice + FFmpeg** | Narrated explainer video | `presentation/video/` |
 
 ## Project folders and files
@@ -86,7 +86,6 @@ CN_Real_Network_arbitration/
 ├── .env.example                  # settings template; `npm run setup` copies it to .env with a secret token
 ├── README.md                     # start here: what it is, how to run it, results
 ├── TECH-STACK.md                 # this file
-├── Real-Network-Testbed-Slides.pptx   # the presentation as PowerPoint
 │
 ├── packages/shared/
 │   └── src/index.ts              # message formats (Zod) shared by every app: slice, stats window, join, probe
@@ -179,5 +178,6 @@ CN_Real_Network_arbitration/
 │
 ├── experiments/                  # recordings land here (CSV files are not committed)
 ├── paper/                        # main.tex (paper), references.bib, results/ (measured data), scripts/
-└── presentation/                 # deck/ (slides), video/ (explainer.mp4, subtitles, build scripts)
+└── presentation/                 # Real-Network-Testbed-Slides.pptx (the deck as PowerPoint),
+                                  #   deck/ (slide source), video/ (explainer.mp4, subtitles, build scripts)
 ```
