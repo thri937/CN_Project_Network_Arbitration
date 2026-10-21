@@ -42,3 +42,6 @@ presentation/video/narration.wav
 presentation/video/build/chunks/
 # ...but keep the video's build scripts (the generic build/ rule above would hide them)
 !presentation/video/build/
+
+# Office lock files
+~$*
