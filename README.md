@@ -1,4 +1,4 @@
-# Slice Arbitration Testbed
+#  Slice Arbitration Testbed
 
 **Who should slow down when the network is full?** This Computer Networks project answers that
 question on a **real network**: one Windows laptop and the phones connected to its Wi-Fi
