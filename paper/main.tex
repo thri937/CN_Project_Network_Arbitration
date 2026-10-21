@@ -126,17 +126,17 @@ Fig.~\ref{fig:arch} shows the testbed. All components are TypeScript on Node.js 
 \node[ctl, below=3.5mm of meter, text width=2.9cm] (api) {Southbound API\\\texttt{127.0.0.1:9090}, bearer token};
 \node[ctl, left=4mm of api, text width=1.9cm] (ctrl) {Controller\\contention $\rightarrow$ \cbha{}\\$\rightarrow$ two-phase apply};
 \node[box, below=3mm of ctrl, text width=1.9cm] (dash) {Operator dashboard\\audit, decisions};
-\draw[->] (dev) -- node[above, font=\tiny]{HTTP :8080} (sq);
+\draw[->] (dev) -- (sq);
 \draw[->] (sq) -- (tb);
 \draw[->] (tb) -- (root);
-\draw[->] (root.north) -- ++(0,2.5mm) -| node[pos=0.25, above, font=\tiny]{bytes + probe replies} (dev.north);
+\draw[->] (root.north) -- ++(0,4mm) -| (dev.north);
 \draw[->] (sq.south) ++(6mm,0) -- (meter.north);
 \draw[->] (meter) -- (api);
-\draw[<->] (api) -- node[above, font=\tiny]{stats / limits} (ctrl);
+\draw[<->] (api) -- (ctrl);
 \draw[<->] (ctrl) -- (dash);
-\node[draw, dashed, rounded corners, fit=(sq)(tb)(root)(meter)(api), inner sep=2pt, label={[font=\scriptsize]above right:Gateway}] {};
+\node[draw, dashed, rounded corners, fit=(sq)(tb)(root)(meter)(api), inner sep=2pt, label={[font=\scriptsize, anchor=south east]south east:Gateway\ }] {};
 \end{tikzpicture}
-\caption{The testbed. Every byte a device downloads passes through the gateway's slice queue, its token bucket and the shared link. The controller only reads measurements and writes limits.}
+\caption{The testbed. Devices reach the gateway over HTTP on port 8080; every byte they download passes through the slice queue, its token bucket and the shared link, and returns with the probe replies (top arrow). The controller only reads measurement windows and writes limits through the southbound API.}
 \label{fig:arch}
 \end{figure}
 
@@ -262,15 +262,15 @@ Canteen & 949 & 415 & 65.15 & 90.03 & 28 \\
   xmin=0, xmax=131,
   xlabel={Time since start of TC6 (s)}, ylabel={p95 latency (ms)},
   label style={font=\scriptsize}, tick label style={font=\scriptsize},
-  legend style={font=\scriptsize, at={(0.98,0.97)}, anchor=north east, legend columns=2},
+  legend style={font=\scriptsize, at={(0.5,-0.34)}, anchor=north, legend columns=3},
   grid=major, grid style={gray!20},
 ]
 \fill[gray!12] (axis cs:0,10) rectangle (axis cs:24,2500);
 \fill[gray!12] (axis cs:64.1,10) rectangle (axis cs:92.1,2500);
-\node[font=\tiny, anchor=north] at (axis cs:12,2300) {off, warm-up};
-\node[font=\tiny, anchor=north] at (axis cs:44,2300) {off, measured};
-\node[font=\tiny, anchor=north] at (axis cs:78,2300) {on, warm-up};
-\node[font=\tiny, anchor=north] at (axis cs:111,2300) {on, measured};
+\node[font=\tiny, anchor=north] at (axis cs:12,2300) {warm-up};
+\node[font=\tiny, anchor=north] at (axis cs:44,2300) {\textbf{off}};
+\node[font=\tiny, anchor=north] at (axis cs:78,2300) {warm-up};
+\node[font=\tiny, anchor=north] at (axis cs:111,2300) {\textbf{on}};
 \addplot[thick, blue!70!black, mark=none] coordinates {(0,21) (2,348) (4,348) (6,507) (8,508) (10,508) (12,507) (14,509) (16,509) (18,502) (20,515) (22,515) (24,501) (26,501) (28,495) (30,508) (32,508) (34,502) (36,494) (38,508) (40,508) (42,501) (44,501) (46,501) (48,508) (50,508) (52,508) (54,501) (56.1,501) (58.1,501) (60.1,499) (62.1,499) (64.1,499) (66.1,514) (68.1,514) (70.1,486) (72.1,447) (74.1,447) (76.1,327) (78.1,230) (80.1,133) (82.1,133) (84.1,70) (86.1,21) (88.1,21) (90.1,21) (92.1,21) (94.1,22) (96.1,22) (98.1,28) (100.1,28) (102.1,22) (104.1,29) (106.1,29) (108.1,22) (110.1,21) (112.1,22) (114.1,22) (116.1,22) (118.1,22) (120.1,21) (122.1,21) (124.1,21) (126.1,22) (128.1,23) (130.1,23)};
 \addlegendentry{Clinic}
 \addplot[thick, orange!85!black, dashed, mark=none] coordinates {(0,542) (2,667) (4,667) (6,959) (8,959) (10,945) (12,952) (14,952) (16,916) (18,930) (20,957) (22,957) (24,951) (26,951) (28,931) (30,958) (32,958) (34,938) (36,945) (38,959) (40,959) (42,945) (44,945) (46,944) (48,952) (50,952) (52,944) (54,959) (56.1,959) (58.1,930) (60.1,951) (62.1,951) (64.1,933) (66.1,932) (68.1,1528) (70.1,1528) (72.1,751) (74.1,751) (76.1,715) (78.1,598) (80.1,598) (82.1,536) (84.1,472) (86.1,472) (88.1,465) (90.1,459) (92.1,459) (94.1,423) (96.1,411) (98.1,437) (100.1,437) (102.1,460) (104.1,460) (106.1,397) (108.1,396) (110.1,465) (112.1,465) (114.1,347) (116.1,390) (118.1,390) (120.1,397) (122.1,411) (124.1,411) (126.1,370) (128.1,389) (130.1,389)};
@@ -299,7 +299,7 @@ The slices that were cut still show about 475\,ms p95. That is not shared-queue 
   symbolic x coords={Clinic,Factory,Lab,Warehouse,CCTV,Office,Canteen},
   xtick=data, x tick label style={font=\scriptsize, rotate=20, anchor=east},
   ylabel={p95 latency (ms)}, label style={font=\scriptsize}, tick label style={font=\scriptsize},
-  legend style={font=\scriptsize, at={(0.02,0.97)}, anchor=north west, legend columns=3},
+  legend style={font=\scriptsize, at={(0.5,-0.38)}, anchor=north, legend columns=2},
   grid=major, grid style={gray!20}, enlarge x limits=0.08,
 ]
 \addplot[fill=gray!55, draw=gray!70!black] coordinates {(Clinic,503) (Factory,509) (Lab,505) (Warehouse,507) (CCTV,626) (Office,573) (Canteen,949)};
