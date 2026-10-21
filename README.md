@@ -19,6 +19,7 @@ It enforces the decision on live traffic and explains every decision in plain En
 
 New to the project? Read **[docs/PROJECT-EXPLAINED.md](docs/PROJECT-EXPLAINED.md)**. It covers
 the whole system from zero, with the technology used in each part and likely viva questions.
+Every library and tool, and what it does here, is listed in **[TECH-STACK.md](TECH-STACK.md)**.
 
 ---
 
@@ -230,6 +231,7 @@ Details: [`paper/README.md`](paper/README.md).
 
 - [`docs/PROJECT-EXPLAINED.md`](docs/PROJECT-EXPLAINED.md): the whole project from zero, the
   tech stack per part, viva questions.
+- [`TECH-STACK.md`](TECH-STACK.md): every technology, its version, and what it does in this project.
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md): components, ports, control loop, shaper.
 - [`docs/TESTBED.md`](docs/TESTBED.md): setup, scaling, SLA targets, test cases, results.
 - [`docs/RUNBOOK.md`](docs/RUNBOOK.md): the live demo, step by step, with troubleshooting.
