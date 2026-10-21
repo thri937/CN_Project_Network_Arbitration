@@ -158,6 +158,7 @@ CN_Real_Network_arbitration/
 │
 ├── scripts/
 │   ├── setup.ts                  # creates .env with a secret token
+│   ├── reset.ts                  # `npm run reset`: fresh start, deletes all history, seeds again
 │   ├── demo-local.ts             # runs test cases TC1–TC6 with 7 agents on one laptop
 │   ├── lan-info.ts               # shows the laptop's addresses and the join QR code
 │   ├── experiment-summary.ts     # turns a recording CSV into a results table

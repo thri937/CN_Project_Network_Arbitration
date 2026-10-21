@@ -99,49 +99,139 @@ the canteen screens over the lab; this one does the opposite.
 
 ---
 
-## Quick start
+## How to run
 
-**Needs:** Windows 11, Node.js 22 or newer, and 0–7 phones or laptops.
+**Needs:** Windows 11, Node.js 22 or newer, and 0–7 phones or laptops. Run every command in the
+project folder.
 
-Run these once, in this order:
+### 1. First time only
 
 ```bash
 npm install
 ```
-
 ```bash
 npm run setup
 ```
-
 ```bash
 npm run build
 ```
-
 ```bash
 npm run seed
 ```
 
-- `npm run setup` creates `.env`, the single settings file for every part.
-- `npm run build` is needed because phones load the **built** department page.
-- `npm run seed` creates the 7 departments, the 7 slices and the demo users.
+| Command | What it does |
+|---|---|
+| `npm install` | Downloads all libraries (2–4 minutes) |
+| `npm run setup` | Creates `.env`, the settings file, with a new secret token |
+| `npm run build` | Builds everything. Needed because phones load the **built** department page |
+| `npm run seed` | Creates the 7 departments, 7 slices, the business policy and the sign-in users |
 
-Then, for each session:
+Then open the firewall for phones, **once per laptop**. In PowerShell opened with
+*Run as administrator*:
 
-1. **Open the firewall once.** In PowerShell opened with *Run as administrator*:
-   `powershell -ExecutionPolicy Bypass -File scripts\windows\open-firewall.ps1`
-2. **Turn on Mobile hotspot** (Settings → Network & internet → Mobile hotspot) and connect the
-   phones to it. Windows allows up to 8 devices.
-3. **Start everything:**
+```bash
+powershell -ExecutionPolicy Bypass -File scripts\windows\open-firewall.ps1
+```
+
+### 2. Start: choose one option
+
+**Option A: live demo with phones** (the normal way)
+
+1. Turn on **Mobile hotspot**: Settings → Network & internet → Mobile hotspot. Connect the
+   phones to it, up to 8.
+2. Start everything:
    ```bash
    npm run dev
    ```
-4. **On the laptop**, open <http://localhost:5173> and press **Sign in as Admin**.
-5. **On each phone**, scan the QR code shown for that department on the **Slices and devices**
-   page, or open `http://192.168.137.1:8080/join` and type the join code. `npm run lan:info`
-   prints the address and a QR code in the terminal.
+3. On the laptop, open <http://localhost:5173> and press **Sign in as Admin**.
+4. On each phone, scan that department's QR code from the **Slices and devices** page, or open
+   `http://192.168.137.1:8080/join` and type the join code. `npm run lan:info` prints the
+   address and a QR code in the terminal.
 
-No phones? Open the join address in several browser tabs on the laptop, one per department.
-Each tab is its own device. Or run the automated demo below.
+**Option B: no phones, browser tabs on the laptop.** Same as A without the hotspot. Open
+<http://localhost:8080/join> in up to 7 tabs, one department per tab. Each tab is its own
+device.
+
+**Option C: software phones (agents).** With `npm run dev` running, start one agent per
+department you want to fill:
+
+```bash
+npx tsx apps/agent/src/index.ts --code FAC201 --rate 209 --name factory-laptop
+```
+
+The join codes are CLN101, FAC201, LAB401, WHS301, SEC601, OFF501 and CAN701. `--rate` is in
+kbps.
+
+**Option D: fully automatic test, no phones** (about 6 minutes; `-- --quick` takes about 4):
+
+```bash
+npm run demo:local
+```
+
+It builds, starts its own gateway and controller with 7 agents, runs TC1–TC6, checks every
+result and writes a CSV and a summary to `experiments/`. Stop `npm run dev` first. To run it
+with fair sharing on the link, add the line `GATEWAY_ROOT_DISCIPLINE=drr` to `.env` (remove it
+afterwards to go back to the shared queue).
+
+**Option E: production build.** Two terminals:
+
+```bash
+npm start
+```
+```bash
+npm run preview -w @cn/dashboard
+```
+
+The controller and gateway run from the built code, and the dashboard is at
+<http://localhost:4173>. Phones use the same addresses as in Option A. Run `npm run build`
+first after any code change.
+
+### 3. Stop
+
+Press **Ctrl+C** in the `npm run dev` window. Everything is saved, so the next `npm run dev`
+continues with the same decisions, audit log and recordings. Phones rejoin by themselves.
+
+To close the firewall again (as administrator):
+
+```bash
+powershell -ExecutionPolicy Bypass -File scripts\windows\close-firewall.ps1
+```
+
+### 4. Fresh start: delete all history
+
+Stop `npm run dev` (Ctrl+C), then:
+
+```bash
+npm run reset
+```
+
+| Deleted | Kept |
+|---|---|
+| All decisions, contention events and the audit log | Your `.env` settings and secret token |
+| Users, policy changes and edited slice contracts (recreated as new) | The code, the builds and `node_modules` |
+| Rotated join codes (back to CLN101 … CAN701) | The measured results in `paper/results/` |
+| Every recording in `experiments/` | |
+
+Then run `npm run dev` again. Close the old department page tabs on phones and join again.
+
+- **Keep the recordings:** `npm run reset -- --keep-recordings`
+- **Delete only the recordings:** delete the CSV files in `experiments/` (keep `README.md`)
+- **Changed the link size in `.env`?** Run `npm run reset`, so the slices are recreated for the
+  new size
+
+`npm run reset` refuses to run while the controller or gateway is still running, because a
+running controller would write the old data back.
+
+### 5. Check that it works
+
+| Command | What it checks |
+|---|---|
+| `npm test` | All 460 automated tests (controller and gateway) |
+| `npm run lan:info` | The laptop's addresses; the hotspot one should be `192.168.137.1` |
+| `npm run calibrate` | With devices joined and idle: their latency against each SLA target |
+| `npm run isp:check` | Only for internet-mode downloads: the laptop's internet is faster than the 1 Mbps link |
+
+If something goes wrong, see the troubleshooting table in [`docs/RUNBOOK.md`](docs/RUNBOOK.md).
 
 ---
 
@@ -218,7 +308,9 @@ Details: [`paper/README.md`](paper/README.md).
 | Command | What it does |
 |---|---|
 | `npm run dev` | Start controller, gateway, dashboard and department page together |
-| `npm run build` / `npm start` | Production build / run of the controller and gateway (phones use the built department page on :8080). For the dashboard, also run `npm run preview -w @cn/dashboard`, or use `npm run dev` |
+| `npm run seed` | Create the 7 departments and slices (keeps old decisions and recordings) |
+| `npm run reset` | Fresh start: delete all history and recordings, then seed (`-- --keep-recordings` keeps the CSVs) |
+| `npm run build` / `npm start` | Production build / run of the controller and gateway (phones use the built department page on :8080). For the dashboard, also run `npm run preview -w @cn/dashboard` (port 4173), or use `npm run dev` |
 | `npm test` | All tests (controller and gateway) |
 | `npm run demo:local` | TC1–TC6 automatically on one laptop (`-- --quick` for a shorter run) |
 | `npm run lan:info` | Show the laptop's addresses and a QR code for phones |

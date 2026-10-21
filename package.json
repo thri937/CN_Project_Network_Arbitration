@@ -13,6 +13,7 @@
   "scripts": {
     "setup": "tsx scripts/setup.ts",
     "seed": "npm run seed --workspace @cn/controller",
+    "reset": "tsx scripts/reset.ts",
     "dev": "concurrently -k -p \"[{name}]\" -n \"ctrl,gate,dash,port\" -c \"blue.bold,green.bold,magenta.bold,yellow.bold\" \"npm run dev -w @cn/controller\" \"npm run dev -w @cn/gateway\" \"npm run dev -w @cn/dashboard\" \"npm run dev -w @cn/portal\"",
     "build": "npm run build --workspace @cn/shared && npm run build --workspace @cn/controller && npm run build --workspace @cn/gateway && npm run build --workspace @cn/dashboard && npm run build --workspace @cn/portal && npm run build --workspace @cn/agent",
     "start": "concurrently -k -p \"[{name}]\" -n \"ctrl,gate\" -c \"blue.bold,green.bold\" \"node apps/controller/dist/server.js\" \"node apps/gateway/dist/index.js\"",

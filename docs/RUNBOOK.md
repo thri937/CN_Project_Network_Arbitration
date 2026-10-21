@@ -34,8 +34,8 @@ It takes about 15 minutes.
 4. **Connect the phones** to the hotspot. Turn off mobile data on each phone, so it uses the
    hotspot, and set its screen to stay on for 10 minutes.
 
-**Want a clean start?** Stop the servers, delete `apps/controller/.data`, and run
-`npm run seed` again.
+**Want a clean start?** Stop the servers (Ctrl+C), then run `npm run reset`. It deletes all
+decisions, the audit log and the recordings, and seeds the 7 departments again.
 
 ---
 
@@ -158,6 +158,6 @@ override is in the **Audit log**.
 | A scenario button does nothing on a slice | That slice has no device joined. Only joined devices send traffic |
 | A phone stopped updating | The screen locked; mobile browsers pause pages. Unlock it; it rejoins by itself |
 | Gateway shows *Not reachable* | `npm run dev` isn't running, or failed. Look at the terminal. Port in use: close the old window, or end Node processes in Task Manager |
-| Numbers look ten times too big | `.env` has the wrong link size. It must be `NETWORK_TOTAL_CAPACITY_MBPS=1000`. Delete `apps/controller/.data` and run `npm run seed` |
-| Old decisions from yesterday | Normal: everything is kept. For a clean start, delete `apps/controller/.data` and run `npm run seed` |
+| Numbers look ten times too big | `.env` has the wrong link size. It must be `NETWORK_TOTAL_CAPACITY_MBPS=1000`. Stop the servers and run `npm run reset` |
+| Old decisions from yesterday | Normal: everything is kept. For a clean start, stop the servers and run `npm run reset` |
 | More than 8 devices | Windows hotspot limit. Use browser tabs on the laptop for the extra departments |
