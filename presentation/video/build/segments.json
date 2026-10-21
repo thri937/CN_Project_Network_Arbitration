@@ -1,0 +1,284 @@
+[
+ {
+  "id": "h1",
+  "cues": [
+   "h1"
+  ],
+  "ssml": "<?xml version=\"1.0\"?><speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"en-US\">One link. A whole company shares it.</speak>"
+ },
+ {
+  "id": "h2",
+  "cues": [
+   "h2"
+  ],
+  "ssml": "<?xml version=\"1.0\"?><speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"en-US\">Lunch hour. Everyone wants it at once.</speak>"
+ },
+ {
+  "id": "h3",
+  "cues": [
+   "h3"
+  ],
+  "ssml": "<?xml version=\"1.0\"?><speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"en-US\">Something has to slow down.</speak>"
+ },
+ {
+  "id": "h4",
+  "cues": [
+   "h4"
+  ],
+  "ssml": "<?xml version=\"1.0\"?><speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"en-US\">So, who would you slow down?</speak>"
+ },
+ {
+  "id": "p1",
+  "cues": [
+   "p1"
+  ],
+  "ssml": "<?xml version=\"1.0\"?><speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"en-US\">Network slicing splits one network into reserved virtual lanes, called slices.</speak>"
+ },
+ {
+  "id": "p2",
+  "cues": [
+   "p2"
+  ],
+  "ssml": "<?xml version=\"1.0\"?><speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"en-US\">We built a real testbed: seven departments, seven slices, one, one megabit link.</speak>"
+ },
+ {
+  "id": "p3",
+  "cues": [
+   "p3"
+  ],
+  "ssml": "<?xml version=\"1.0\"?><speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"en-US\">Nine hundred and fifty kilobits are usable, but one thousand four hundred and eighty were promised.</speak>"
+ },
+ {
+  "id": "p4",
+  "cues": [
+   "p4"
+  ],
+  "ssml": "<?xml version=\"1.0\"?><speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"en-US\">That's normal, like a gym selling more memberships than machines.</speak>"
+ },
+ {
+  "id": "p5",
+  "cues": [
+   "p5"
+  ],
+  "ssml": "<?xml version=\"1.0\"?><speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"en-US\">Normal networks decide with technical labels, set at install time.</speak>"
+ },
+ {
+  "id": "p6",
+  "cues": [
+   "p6"
+  ],
+  "ssml": "<?xml version=\"1.0\"?><speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"en-US\">The canteen screens are tagged U R L L C, premium. The regulated quality lab, e M B B, standard.</speak>"
+ },
+ {
+  "id": "p7",
+  "cues": [
+   "p7"
+  ],
+  "ssml": "<?xml version=\"1.0\"?><speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"en-US\">So the network slows the lab, and protects the lunch menu.</speak>"
+ },
+ {
+  "id": "s1",
+  "cues": [
+   "s1"
+  ],
+  "ssml": "<?xml version=\"1.0\"?><speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"en-US\">Our software ignores labels and asks business questions.</speak>"
+ },
+ {
+  "id": "s2",
+  "cues": [
+   "s2"
+  ],
+  "ssml": "<?xml version=\"1.0\"?><speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"en-US\">How critical is it? What does a minute of outage cost?</speak>"
+ },
+ {
+  "id": "s3",
+  "cues": [
+   "s3"
+  ],
+  "ssml": "<?xml version=\"1.0\"?><speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"en-US\">Factory line, eight thousand four hundred pounds. Canteen screens, fifteen.</speak>"
+ },
+ {
+  "id": "s4",
+  "cues": [
+   "s4"
+  ],
+  "ssml": "<?xml version=\"1.0\"?><speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"en-US\">Safety rules? Customer impact? How long can it cope? Was it slowed recently?</speak>"
+ },
+ {
+  "id": "l0",
+  "cues": [
+   "l0"
+  ],
+  "ssml": "<?xml version=\"1.0\"?><speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"en-US\">Then a seven step loop runs every two seconds.</speak>"
+ },
+ {
+  "id": "l1",
+  "cues": [
+   "l1"
+  ],
+  "ssml": "<?xml version=\"1.0\"?><speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"en-US\">One. Measure real traffic, delay and lost data at the gateway.</speak>"
+ },
+ {
+  "id": "l2",
+  "cues": [
+   "l2"
+  ],
+  "ssml": "<?xml version=\"1.0\"?><speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"en-US\">Two. Detect: demand over a hundred and two percent of the link, twice in a row.</speak>"
+ },
+ {
+  "id": "l2b",
+  "cues": [
+   "l2b"
+  ],
+  "ssml": "<?xml version=\"1.0\"?><speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"en-US\">One spike can't fool it.</speak>"
+ },
+ {
+  "id": "l3",
+  "cues": [
+   "l3"
+  ],
+  "ssml": "<?xml version=\"1.0\"?><speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"en-US\">Three. Score: each slice gets a business score, zero to a hundred.</speak>"
+ },
+ {
+  "id": "l4",
+  "cues": [
+   "l4"
+  ],
+  "ssml": "<?xml version=\"1.0\"?><speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"en-US\">Four. Decide. Many small cuts beat one big cut. Harm grows faster than the cut.</speak>"
+ },
+ {
+  "id": "l4b",
+  "cues": [
+   "l4b"
+  ],
+  "ssml": "<?xml version=\"1.0\"?><speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"en-US\">One slice cut sixty percent: harm, zero point three six. Six slices cut ten percent: just zero point zero six.</speak>"
+ },
+ {
+  "id": "l4c",
+  "cues": [
+   "l4c"
+  ],
+  "ssml": "<?xml version=\"1.0\"?><speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"en-US\">Life-safety slices are never touched. No slice drops below its minimum.</speak>"
+ },
+ {
+  "id": "l5",
+  "cues": [
+   "l5"
+  ],
+  "ssml": "<?xml version=\"1.0\"?><speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"en-US\">Five. Apply the new speed limits on the gateway.</speak>"
+ },
+ {
+  "id": "l6",
+  "cues": [
+   "l6"
+  ],
+  "ssml": "<?xml version=\"1.0\"?><speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"en-US\">Six. Restore bandwidth after each recovery window.</speak>"
+ },
+ {
+  "id": "l7",
+  "cues": [
+   "l7"
+  ],
+  "ssml": "<?xml version=\"1.0\"?><speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"en-US\">Seven. Record a permanent explanation. Nobody can edit or delete it, not even an admin.</speak>"
+ },
+ {
+  "id": "d1",
+  "cues": [
+   "d1"
+  ],
+  "ssml": "<?xml version=\"1.0\"?><speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"en-US\">In the lunch-hour rush, demand hit one thousand three hundred and sixteen kilobits, with nine hundred and fifty usable.</speak>"
+ },
+ {
+  "id": "d2",
+  "cues": [
+   "d2"
+  ],
+  "ssml": "<?xml version=\"1.0\"?><speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"en-US\">With a safety margin, it had to free two hundred and fifty one point five kilobits.</speak>"
+ },
+ {
+  "id": "d3",
+  "cues": [
+   "d3"
+  ],
+  "ssml": "<?xml version=\"1.0\"?><speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"en-US\">Remember our question? The canteen screens took an eighty percent cut.</speak>"
+ },
+ {
+  "id": "d4",
+  "cues": [
+   "d4"
+  ],
+  "ssml": "<?xml version=\"1.0\"?><speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"en-US\">Office Wi-Fi lost thirty two percent, the warehouse twenty four, C C T V twelve. Patient monitoring was never cut.</speak>"
+ },
+ {
+  "id": "d5",
+  "cues": [
+   "d5"
+  ],
+  "ssml": "<?xml version=\"1.0\"?><speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"en-US\">Factory and lab: untouched. The gateway enforced it four seconds later, with no button pressed.</speak>"
+ },
+ {
+  "id": "n1",
+  "cues": [
+   "n1"
+  ],
+  "ssml": "<?xml version=\"1.0\"?><speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"en-US\">What's new? Not slicing, not the sharing maths, but the combination.</speak>"
+ },
+ {
+  "id": "n2",
+  "cues": [
+   "n2"
+  ],
+  "ssml": "<?xml version=\"1.0\"?><speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"en-US\">Business value, not labels. Small cuts, not one deep cut.</speak>"
+ },
+ {
+  "id": "n3",
+  "cues": [
+   "n3"
+  ],
+  "ssml": "<?xml version=\"1.0\"?><speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"en-US\">Safety as a hard rule, not a weight.</speak>"
+ },
+ {
+  "id": "n4",
+  "cues": [
+   "n4"
+  ],
+  "ssml": "<?xml version=\"1.0\"?><speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"en-US\">And it is proved on real traffic, every two seconds recorded.</speak>"
+ },
+ {
+  "id": "n5",
+  "cues": [
+   "n5"
+  ],
+  "ssml": "<?xml version=\"1.0\"?><speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"en-US\">With arbitration off, the clinic waited half a second. On: twenty three milliseconds, and no loss.</speak>"
+ },
+ {
+  "id": "f1",
+  "cues": [
+   "f1"
+  ],
+  "ssml": "<?xml version=\"1.0\"?><speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"en-US\">Today the link is real but small: one megabit, shaped in our own software.</speak>"
+ },
+ {
+  "id": "f2",
+  "cues": [
+   "f2"
+  ],
+  "ssml": "<?xml version=\"1.0\"?><speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"en-US\">Real traffic, measured delay, phones on a hotspot, and the full engine. Four hundred and sixty tests pass.</speak>"
+ },
+ {
+  "id": "f3",
+  "cues": [
+   "f3",
+   "f4"
+  ],
+  "ssml": "<?xml version=\"1.0\"?><speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"en-US\">Next: seven phones measured, kernel shaping, a real five G core, and radio slicing.</speak>"
+ },
+ {
+  "id": "f5",
+  "cues": [
+   "f5",
+   "f6"
+  ],
+  "ssml": "<?xml version=\"1.0\"?><speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"en-US\">When the link is full, it slows down what matters least to the business, in small, fair, safe steps. And it explains every decision.</speak>"
+ }
+]

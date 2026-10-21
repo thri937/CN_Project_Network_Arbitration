@@ -1,0 +1,463 @@
+{
+ "duration": 189.44,
+ "cues": [
+  {
+   "id": "h1",
+   "scene": "hook",
+   "show": "One link. A whole company shares it.",
+   "start": 1.0,
+   "end": 3.23
+  },
+  {
+   "id": "h2",
+   "scene": "hook",
+   "show": "Lunch hour. Everyone wants it at once.",
+   "start": 3.65,
+   "end": 6.01
+  },
+  {
+   "id": "h3",
+   "scene": "hook",
+   "show": "Something has to slow down.",
+   "start": 6.43,
+   "end": 7.7
+  },
+  {
+   "id": "h4",
+   "scene": "hook",
+   "show": "So\u2026 who would YOU slow down?",
+   "start": 8.22,
+   "end": 9.8
+  },
+  {
+   "id": "p1",
+   "scene": "problem",
+   "show": "Network slicing splits one network into reserved virtual lanes, called slices.",
+   "start": 13.82,
+   "end": 17.72
+  },
+  {
+   "id": "p2",
+   "scene": "problem",
+   "show": "We built a real testbed: 7 departments, 7 slices, one 1-megabit link.",
+   "start": 18.09,
+   "end": 23.13
+  },
+  {
+   "id": "p3",
+   "scene": "problem",
+   "show": "950 kilobits are usable, but 1,480 were promised.",
+   "start": 23.5,
+   "end": 27.67
+  },
+  {
+   "id": "p4",
+   "scene": "problem",
+   "show": "That's normal, like a gym selling more memberships than machines.",
+   "start": 28.04,
+   "end": 30.99
+  },
+  {
+   "id": "p5",
+   "scene": "problem",
+   "show": "Normal networks decide with technical labels, set at install time.",
+   "start": 31.56,
+   "end": 34.86
+  },
+  {
+   "id": "p6",
+   "scene": "problem",
+   "show": "The canteen screens are tagged URLLC, premium. The regulated quality lab, eMBB, standard.",
+   "start": 35.23,
+   "end": 41.65
+  },
+  {
+   "id": "p7",
+   "scene": "problem",
+   "show": "So the network slows the lab\u2026 and protects the lunch menu.",
+   "start": 42.07,
+   "end": 44.88
+  },
+  {
+   "id": "s1",
+   "scene": "solution",
+   "show": "Our software ignores labels and asks business questions.",
+   "start": 45.8,
+   "end": 48.37
+  },
+  {
+   "id": "s2",
+   "scene": "solution",
+   "show": "How critical is it? What does a minute of outage cost?",
+   "start": 48.74,
+   "end": 51.59
+  },
+  {
+   "id": "s3",
+   "scene": "solution",
+   "show": "Factory line: \u00a38,400. Canteen screens: \u00a315.",
+   "start": 51.91,
+   "end": 56.77
+  },
+  {
+   "id": "s4",
+   "scene": "solution",
+   "show": "Safety rules? Customer impact? How long can it cope? Was it slowed recently?",
+   "start": 57.19,
+   "end": 62.88
+  },
+  {
+   "id": "l0",
+   "scene": "loop",
+   "show": "Then a 7-step loop runs every 2 seconds.",
+   "start": 63.8,
+   "end": 65.89
+  },
+  {
+   "id": "l1",
+   "scene": "loop",
+   "show": "1. Measure real traffic, delay and lost data at the gateway.",
+   "start": 66.41,
+   "end": 70.13
+  },
+  {
+   "id": "l2",
+   "scene": "loop",
+   "show": "2. Detect: demand over 102% of the link, twice in a row.",
+   "start": 70.55,
+   "end": 75.15
+  },
+  {
+   "id": "l2b",
+   "scene": "loop",
+   "show": "One spike can't fool it.",
+   "start": 75.47,
+   "end": 76.63
+  },
+  {
+   "id": "l3",
+   "scene": "loop",
+   "show": "3. Score: each slice gets a business score, 0 to 100.",
+   "start": 77.05,
+   "end": 81.25
+  },
+  {
+   "id": "l4",
+   "scene": "loop",
+   "show": "4. Decide. Many small cuts beat one big cut. Harm grows faster than the cut.",
+   "start": 81.67,
+   "end": 87.29
+  },
+  {
+   "id": "l4b",
+   "scene": "loop",
+   "show": "One slice cut 60%: harm 0.36. Six slices cut 10%: just 0.06.",
+   "start": 87.61,
+   "end": 95.06
+  },
+  {
+   "id": "l4c",
+   "scene": "loop",
+   "show": "Life-safety slices are never touched. No slice drops below its minimum.",
+   "start": 95.48,
+   "end": 99.42
+  },
+  {
+   "id": "l5",
+   "scene": "loop",
+   "show": "5. Apply the new speed limits on the gateway.",
+   "start": 99.84,
+   "end": 102.62
+  },
+  {
+   "id": "l6",
+   "scene": "loop",
+   "show": "6. Restore bandwidth after each recovery window.",
+   "start": 103.04,
+   "end": 106.18
+  },
+  {
+   "id": "l7",
+   "scene": "loop",
+   "show": "7. Record a permanent explanation. Nobody can edit or delete it, not even an admin.",
+   "start": 106.6,
+   "end": 112.15
+  },
+  {
+   "id": "d1",
+   "scene": "decision",
+   "show": "In the lunch-hour rush, demand hit 1,316 kilobits, with 950 usable.",
+   "start": 113.07,
+   "end": 118.58
+  },
+  {
+   "id": "d2",
+   "scene": "decision",
+   "show": "With a safety margin, it had to free 251.5 kilobits.",
+   "start": 118.95,
+   "end": 122.88
+  },
+  {
+   "id": "d3",
+   "scene": "decision",
+   "show": "Remember our question? The canteen screens took an 80% cut.",
+   "start": 123.35,
+   "end": 126.94
+  },
+  {
+   "id": "d4",
+   "scene": "decision",
+   "show": "Office Wi-Fi lost 32%, the warehouse 24%, CCTV 12%. Patient monitoring: never cut.",
+   "start": 127.31,
+   "end": 134.02
+  },
+  {
+   "id": "d5",
+   "scene": "decision",
+   "show": "Factory and lab: untouched. The gateway enforced it 4 seconds later, with no button pressed.",
+   "start": 134.39,
+   "end": 139.75
+  },
+  {
+   "id": "n1",
+   "scene": "new",
+   "show": "What's new? Not slicing, not the sharing maths, but the combination.",
+   "start": 140.67,
+   "end": 144.95
+  },
+  {
+   "id": "n2",
+   "scene": "new",
+   "show": "Business value, not labels. Small cuts, not one deep cut.",
+   "start": 145.32,
+   "end": 149.49
+  },
+  {
+   "id": "n3",
+   "scene": "new",
+   "show": "Safety as a hard rule, not a weight.",
+   "start": 149.81,
+   "end": 151.84
+  },
+  {
+   "id": "n4",
+   "scene": "new",
+   "show": "And it is proved on real traffic, every 2 seconds recorded.",
+   "start": 152.16,
+   "end": 155.04
+  },
+  {
+   "id": "n5",
+   "scene": "new",
+   "show": "With arbitration off, the clinic waited half a second. On: 23 milliseconds, no loss.",
+   "start": 155.41,
+   "end": 161.29
+  },
+  {
+   "id": "f1",
+   "scene": "future",
+   "show": "Today the link is real but small: 1 megabit, shaped in our own software.",
+   "start": 162.21,
+   "end": 165.97
+  },
+  {
+   "id": "f2",
+   "scene": "future",
+   "show": "Real traffic, measured delay, phones on a hotspot, and the full engine. 460 tests pass.",
+   "start": 166.34,
+   "end": 172.62
+  },
+  {
+   "id": "f3",
+   "scene": "future",
+   "show": "Next: seven phones measured, kernel shaping,",
+   "start": 173.14,
+   "end": 176.075
+  },
+  {
+   "id": "f4",
+   "scene": "future",
+   "show": "a real 5G core, and radio slicing.",
+   "start": 176.125,
+   "end": 178.43
+  },
+  {
+   "id": "f5",
+   "scene": "future",
+   "show": "When the link is full, it slows down what matters least to the business,",
+   "start": 179.25,
+   "end": 182.55
+  },
+  {
+   "id": "f6",
+   "scene": "future",
+   "show": "in small, fair, safe steps. And it explains every decision.",
+   "start": 182.6,
+   "end": 186.72
+  }
+ ],
+ "marks": {
+  "rush": 4.88,
+  "nine": 20.63,
+  "link": 21.755,
+  "usable": 23.53,
+  "promised": 25.625,
+  "standard": 38.705,
+  "lunch": 43.685,
+  "q1": 48.75,
+  "q2": 50.205,
+  "canteen15": 55.035,
+  "q3": 57.2,
+  "q4": 58.695,
+  "q5": 60.235,
+  "q6": 61.88,
+  "tworeads": 74.445,
+  "spike": 75.49,
+  "small": 83.7,
+  "faster": 85.96,
+  "six": 91.835,
+  "floor": 97.805,
+  "noedit": 109.805,
+  "demand": 114.35,
+  "usable2": 117.14,
+  "free": 120.19,
+  "cut80": 125.005,
+  "wh": 129.455,
+  "cctv": 130.83,
+  "exempt": 132.66,
+  "ms2": 136.705,
+  "nobutton": 138.77,
+  "combo": 144.105,
+  "i1": 145.33,
+  "i2": 147.63,
+  "i3": 149.82,
+  "i4": 152.19,
+  "eq": 156.675,
+  "alt": 158.645,
+  "real": 166.37,
+  "tests": 170.925,
+  "r1": 173.17,
+  "r2": 175.115,
+  "r3": 176.125,
+  "r4": 177.47,
+  "least": 180.99,
+  "wsmall": 182.705,
+  "wfair": 183.38,
+  "wsafe": 184.03,
+  "wexp": 185.425,
+  "h1": 1.0,
+  "h1_end": 3.23,
+  "h2": 3.65,
+  "h2_end": 6.01,
+  "h3": 6.43,
+  "h3_end": 7.7,
+  "h4": 8.22,
+  "h4_end": 9.8,
+  "p1": 13.82,
+  "p1_end": 17.72,
+  "p2": 18.09,
+  "p2_end": 23.13,
+  "p3": 23.5,
+  "p3_end": 27.67,
+  "p4": 28.04,
+  "p4_end": 30.99,
+  "p5": 31.56,
+  "p5_end": 34.86,
+  "p6": 35.23,
+  "p6_end": 41.65,
+  "p7": 42.07,
+  "p7_end": 44.88,
+  "s1": 45.8,
+  "s1_end": 48.37,
+  "s2": 48.74,
+  "s2_end": 51.59,
+  "s3": 51.91,
+  "s3_end": 56.77,
+  "s4": 57.19,
+  "s4_end": 62.88,
+  "l0": 63.8,
+  "l0_end": 65.89,
+  "l1": 66.41,
+  "l1_end": 70.13,
+  "l2": 70.55,
+  "l2_end": 75.15,
+  "l2b": 75.47,
+  "l2b_end": 76.63,
+  "l3": 77.05,
+  "l3_end": 81.25,
+  "l4": 81.67,
+  "l4_end": 87.29,
+  "l4b": 87.61,
+  "l4b_end": 95.06,
+  "l4c": 95.48,
+  "l4c_end": 99.42,
+  "l5": 99.84,
+  "l5_end": 102.62,
+  "l6": 103.04,
+  "l6_end": 106.18,
+  "l7": 106.6,
+  "l7_end": 112.15,
+  "d1": 113.07,
+  "d1_end": 118.58,
+  "d2": 118.95,
+  "d2_end": 122.88,
+  "d3": 123.35,
+  "d3_end": 126.94,
+  "d4": 127.31,
+  "d4_end": 134.02,
+  "d5": 134.39,
+  "d5_end": 139.75,
+  "n1": 140.67,
+  "n1_end": 144.95,
+  "n2": 145.32,
+  "n2_end": 149.49,
+  "n3": 149.81,
+  "n3_end": 151.84,
+  "n4": 152.16,
+  "n4_end": 155.04,
+  "n5": 155.41,
+  "n5_end": 161.29,
+  "f1": 162.21,
+  "f1_end": 165.97,
+  "f2": 166.34,
+  "f2_end": 172.62,
+  "f3": 173.14,
+  "f3_end": 176.075,
+  "f4": 176.125,
+  "f4_end": 178.43,
+  "f5": 179.25,
+  "f5_end": 182.55,
+  "f6": 182.6,
+  "f6_end": 186.72
+ },
+ "scenes": {
+  "hook": {
+   "start": 0.0,
+   "end": 13.32
+  },
+  "problem": {
+   "start": 13.32,
+   "end": 45.3
+  },
+  "solution": {
+   "start": 45.3,
+   "end": 63.3
+  },
+  "loop": {
+   "start": 63.3,
+   "end": 112.57
+  },
+  "decision": {
+   "start": 112.57,
+   "end": 140.17
+  },
+  "new": {
+   "start": 140.17,
+   "end": 161.71
+  },
+  "future": {
+   "start": 161.71,
+   "end": 189.44
+  }
+ }
+}
