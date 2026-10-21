@@ -6,6 +6,7 @@ deck and video in its own repository; the two are presented separately.
 | What | Where |
 |---|---|
 | **Slide deck** (39 slides, with speaker notes) | Online: <https://claude.ai/artifact/YRVRR2ERkQstcceqN596Ye>. The source is in `deck/` (`deck.json` + one HTML file per slide) |
+| **PowerPoint copy** | `Real-Network-Testbed-Slides.pptx` in the repository root: every slide as a picture, with the speaker notes. For an editable PowerPoint, open the online deck and use Share → Export |
 | **Explainer video** (about 3 minutes, narrated, with subtitles) | `video/explainer.mp4`, subtitles in `video/explainer.srt`, the script with timings in `video/script.md` |
 
 The deck link is private to the account that made it. To show it to others, open it and use
