@@ -1,0 +1,20 @@
+<section id="fair-share" data-transition="fade" style="background:#FAF7F1;color:#4A5563;font-family:'Nunito Sans', Verdana, sans-serif;padding:128px;display:flex;flex-direction:column;justify-content:space-between;gap:48px">
+<div style="display:flex;flex-direction:column;gap:16px">
+<p style="font-size:24px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:#2F62A8">Measured · A fair question</p>
+<h2 style="font-family:Rubik, Arial, sans-serif;font-size:72px;font-weight:600;line-height:1.1;color:#17212F">Why not just share the link fairly?</h2>
+</div>
+<div style="display:flex;gap:40px">
+<div style="flex:1;background:#FFFDF9;border:1px solid #E4DED3;border-radius:20px;padding:36px 40px;display:flex;flex-direction:column;gap:16px">
+<h3 style="font-family:Rubik, Arial, sans-serif;font-size:40px;font-weight:600;color:#17212F">Lunch rush: it works</h3>
+<p style="font-size:32px;line-height:1.4">Fair queueing (DRR) alone keeps Clinic, Factory and Lab near <b>40 ms</b>: each stays inside its share.</p>
+<p style="font-size:24px;line-height:1.4">But the canteen keeps 98 kbps, 3.5× its minimum, while the warehouse is squeezed.</p>
+</div>
+<div style="flex:1;background:#FBE3D3;border:2px solid #D9622B;border-radius:20px;padding:36px 40px;display:flex;flex-direction:column;gap:16px">
+<h3 style="font-family:Rubik, Arial, sans-serif;font-size:40px;font-weight:600;color:#8A3510">Everyone at peak: it breaks a rule</h3>
+<p style="font-family:Rubik, Arial, sans-serif;font-size:80px;font-weight:600;line-height:1.05;color:#8A3510">37.5 kbps</p>
+<p style="font-size:32px;line-height:1.4">for the clinic, <b>below its 40 kbps minimum</b>. Fair sharing doesn’t know what the business values.</p>
+</div>
+</div>
+<p style="font-family:Rubik, Arial, sans-serif;font-size:40px;font-weight:600;color:#17212F">Fair sharing isolates slices. <span style="color:#2F62A8">Our engine decides the shares.</span> Use both.</p>
+<aside>A good question from any networking person: why not simply share the link fairly between slices? We built that too, weighted deficit round robin, and measured it with no controller at all. In the lunch rush it works well: the clinic, factory and lab each send less than their fair share, so they never wait behind anyone, and stay near 40 milliseconds. But it is business-blind: the canteen keeps 98 kbps, three and a half times its minimum, while the warehouse, which matters far more, is squeezed. And when everyone is at peak, fair sharing gives each slice a share proportional to its size, which leaves the life-safety clinic at 37.5 kbps, below its 40 kbps contractual minimum. So the two are complementary: fair queueing isolates slices, and our engine decides what the shares should be. We ran the full test cases with both switched on: the protected slices were already fast with fair sharing alone, and arbitration then decided who pays, cutting the canteen to its minimum and reducing loss for the warehouse and cameras.</aside>
+</section>

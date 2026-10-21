@@ -1,0 +1,22 @@
+<section id="labels" data-transition="fade" style="background:#FAF7F1;color:#4A5563;font-family:'Nunito Sans', Verdana, sans-serif;padding:128px;display:flex;flex-direction:column;justify-content:space-between;gap:56px">
+<div style="display:flex;flex-direction:column;gap:16px">
+<p style="font-size:24px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:#2F62A8">The problem</p>
+<h2 style="font-family:Rubik, Arial, sans-serif;font-size:72px;font-weight:600;line-height:1.1;color:#17212F">You’d slow the canteen.<br>The network slows the lab.</h2>
+</div>
+<div style="display:flex;flex-direction:column;gap:24px">
+<div style="display:flex;align-items:center;gap:32px;background:#FFFDF9;border:1px solid #E4DED3;border-radius:20px;padding:28px 40px">
+<p style="width:560px;font-family:Rubik, Arial, sans-serif;font-size:40px;font-weight:600;color:#17212F">Canteen screens</p>
+<p style="background:#EDF2F7;color:#17212F;font-size:32px;padding:10px 24px;border-radius:999px">label: URLLC (premium)</p>
+<x-shape kind="arrow-right" style="flex:none;width:64px;height:32px;background:#9FB0C3"></x-shape>
+<p style="background:#2F62A8;color:#FAF7F1;font-family:Rubik, Arial, sans-serif;font-size:32px;font-weight:600;padding:10px 28px;border-radius:12px">Protected</p>
+</div>
+<div style="display:flex;align-items:center;gap:32px;background:#FFFDF9;border:1px solid #E4DED3;border-radius:20px;padding:28px 40px">
+<p style="width:560px;font-family:Rubik, Arial, sans-serif;font-size:40px;font-weight:600;color:#17212F">Quality lab (regulated)</p>
+<p style="background:#EDF2F7;color:#17212F;font-size:32px;padding:10px 24px;border-radius:999px">label: eMBB (standard)</p>
+<x-shape kind="arrow-right" style="flex:none;width:64px;height:32px;background:#9FB0C3"></x-shape>
+<p style="background:#D9622B;color:#17212F;font-family:Rubik, Arial, sans-serif;font-size:32px;font-weight:600;padding:10px 28px;border-radius:12px">Slowed down</p>
+</div>
+</div>
+<p style="font-size:32px;line-height:1.4;color:#17212F">Conventional slice controllers trust <b>network labels</b> (5QI, slice type, a static priority) set at install time, not business value.</p>
+<aside>Here is the twist. Network equipment decides using the technical label given to each system when it was set up, often from a template, by whoever installed it. The canteen screens happened to be set up as URLLC, the premium type. The quality lab, which is regulated and cannot lose data, was set up as eMBB, the standard type. So when capacity runs short, a label-based controller protects the lunch menu and slows the lab. And without any controller at all it is worse: everyone waits in the same full queue, the clinic included. We will measure that later.</aside>
+</section>

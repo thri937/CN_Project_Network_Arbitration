@@ -1,0 +1,25 @@
+<section id="slicing-101" data-transition="fade" style="background:#FAF7F1;color:#4A5563;font-family:'Nunito Sans', Verdana, sans-serif;padding:128px;display:flex;flex-direction:column;justify-content:space-between;gap:48px">
+<div style="display:flex;flex-direction:column;gap:16px">
+<p style="font-size:24px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:#2F62A8">Background</p>
+<h2 style="font-family:Rubik, Arial, sans-serif;font-size:72px;font-weight:600;line-height:1.1;color:#17212F">What is network slicing?</h2>
+</div>
+<div style="display:flex;gap:56px">
+<div style="flex:1;display:flex;flex-direction:column;gap:24px">
+<div style="display:flex;gap:20px;align-items:flex-start"><x-icon name="Cloud" style="flex:none;color:#2F62A8;width:48px;height:48px"></x-icon><p style="font-size:32px;line-height:1.4;color:#17212F">One physical network is split into <b>many logical networks</b>.</p></div>
+<div style="display:flex;gap:20px;align-items:flex-start"><x-icon name="Verified" style="flex:none;color:#2F62A8;width:48px;height:48px"></x-icon><p style="font-size:32px;line-height:1.4;color:#17212F">Each slice gets its own <b>bandwidth, latency and reliability</b> promise — its SLA.</p></div>
+<div style="display:flex;gap:20px;align-items:flex-start"><x-icon name="Key" style="flex:none;color:#2F62A8;width:48px;height:48px"></x-icon><p style="font-size:32px;line-height:1.4;color:#17212F">Identified by <b>S-NSSAI</b> = SST (type) + SD (differentiator), per 3GPP TS 23.501.</p></div>
+</div>
+<div style="flex:none;width:760px;display:flex;flex-direction:column;gap:12px">
+<p style="font-size:24px;font-weight:700;letter-spacing:2px;color:#4A5563">5G SLICE / SERVICE TYPES (SST)</p>
+<table style="font-family:'Nunito Sans', Verdana, sans-serif;font-size:24px;color:#17212F">
+<tr style="background:#E9EEF5"><th style="width:12%">SST</th><th style="width:22%">Type</th><th style="width:66%">Built for</th></tr>
+<tr style="background:#FFFDF9"><td>1</td><td><b>eMBB</b></td><td>High bandwidth: video, cameras, Wi-Fi</td></tr>
+<tr style="background:#FFFDF9"><td>2</td><td><b>URLLC</b></td><td>Ultra-low latency, high reliability: robots, medical</td></tr>
+<tr style="background:#FFFDF9"><td>3</td><td><b>mMTC</b></td><td>Massive numbers of small IoT sensors</td></tr>
+<tr style="background:#FFFDF9"><td>4</td><td><b>V2X</b></td><td>Vehicle communication</td></tr>
+</table>
+</div>
+</div>
+<p style="font-size:32px;line-height:1.4;color:#17212F">Our project stores every slice with its <b>real 3GPP identity</b>, e.g. SST 2, SD 000101.</p>
+<aside>Network slicing is one of the core ideas of 5G. Instead of one network that treats all traffic the same, the operator carves the physical network into several logical, end-to-end networks called slices. Each slice gets its own guarantees — bandwidth, latency, reliability — written down as a service-level agreement. 3GPP identifies a slice with an S-NSSAI: the Slice/Service Type, or SST, plus an optional Slice Differentiator, SD. The standard types are eMBB for high bandwidth, URLLC for ultra-reliable low latency, mMTC for massive IoT, and V2X for vehicles. Our project models slices natively with S-NSSAI, so connecting to a real 5G core later needs no data migration.</aside>
+</section>

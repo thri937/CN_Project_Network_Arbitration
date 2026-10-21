@@ -1,0 +1,19 @@
+<section id="detect" data-transition="fade" style="background:#FAF7F1;color:#4A5563;font-family:'Nunito Sans', Verdana, sans-serif;padding:128px;display:flex;flex-direction:column;justify-content:space-between;gap:40px">
+<div style="display:flex;flex-direction:column;gap:16px">
+<p style="font-size:24px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:#2F62A8">Step 2 · Detect</p>
+<h2 style="font-family:Rubik, Arial, sans-serif;font-size:72px;font-weight:600;line-height:1.1;color:#17212F">Detecting contention — calmly</h2>
+</div>
+<div style="display:flex;align-items:center;gap:20px">
+<div style="flex:1;background:#FFFDF9;border:1px solid #E4DED3;border-radius:20px;padding:28px 32px"><p style="font-size:24px;font-weight:700">Reading 1</p><p style="font-family:Rubik, Arial, sans-serif;font-size:72px;font-weight:600;color:#2F62A8">98%</p><p style="font-size:24px;color:#17212F">Under the line. Fine.</p></div>
+<x-shape kind="arrow-right" style="flex:none;width:48px;height:24px;background:#C9D3DF"></x-shape>
+<div style="flex:1;background:#FFFDF9;border:1px solid #E4DED3;border-radius:20px;padding:28px 32px"><p style="font-size:24px;font-weight:700">Reading 2</p><p style="font-family:Rubik, Arial, sans-serif;font-size:72px;font-weight:600;color:#B4501F">104%</p><p style="font-size:24px;color:#17212F">Over — wait for one more.</p></div>
+<x-shape kind="arrow-right" style="flex:none;width:48px;height:24px;background:#C9D3DF"></x-shape>
+<div style="flex:1;background:#FBE3D3;border:2px solid #D9622B;border-radius:20px;padding:28px 32px"><p style="font-size:24px;font-weight:700;color:#8A3510">Reading 3</p><p style="font-family:Rubik, Arial, sans-serif;font-size:72px;font-weight:600;color:#8A3510">106%</p><p style="font-size:24px;color:#17212F"><b>Contention confirmed.</b></p></div>
+</div>
+<div style="display:flex;gap:24px">
+<div style="flex:1;background:#EDF2F7;border-radius:16px;padding:24px 28px;display:flex;flex-direction:column;gap:6px"><h3 style="font-family:Rubik, Arial, sans-serif;font-size:32px;font-weight:600;color:#17212F">Demand ratio, not utilisation</h3><p style="font-size:24px;line-height:1.4">Utilisation caps at 100%. Demand ÷ capacity shows how bad it is — 102% or 300%.</p></div>
+<div style="flex:1;background:#EDF2F7;border-radius:16px;padding:24px 28px;display:flex;flex-direction:column;gap:6px"><h3 style="font-family:Rubik, Arial, sans-serif;font-size:32px;font-weight:600;color:#17212F">Hysteresis</h3><p style="font-size:24px;line-height:1.4">Open above 102% for 2 readings; close after 3 calm ones. No flapping.</p></div>
+<div style="flex:1;background:#EDF2F7;border-radius:16px;padding:24px 28px;display:flex;flex-direction:column;gap:6px"><h3 style="font-family:Rubik, Arial, sans-serif;font-size:32px;font-weight:600;color:#17212F">Cooldown</h3><p style="font-size:24px;line-height:1.4">20 s between decisions, so a cut takes effect before it is judged.</p></div>
+</div>
+<aside>Detecting contention sounds easy — if demand is above capacity, act — but that fires dozens of times a minute because demand jitters around the line. Three mechanisms from control engineering fix it. First, it measures the demand ratio, demand divided by capacity, not utilisation: utilisation can never exceed 100 percent, so it can’t tell 102 percent from 300 percent, or how much bandwidth to free. Second, hysteresis: it needs demand above 102 percent for two readings in a row to open an event, and three calm readings to close it — slow to declare victory, so it doesn’t flap. Third, a 20-second cooldown between decisions, so an applied cut has time to take effect before the loop judges it. In control-theory terms: the setpoint is capacity minus headroom, the actuator is bandwidth allocation, and the 102 percent band is the dead band.</aside>
+</section>

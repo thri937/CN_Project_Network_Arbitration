@@ -415,7 +415,7 @@ export function TestbedPage(): JSX.Element {
           ) : (
             <span className="text-content-muted">Not recording: the gateway adapter is not in use.</span>
           )}
-          {s?.recording && (
+          {s?.recording && s.recording.rowCount > 0 && (
             <Button size="sm" variant="secondary" onClick={() => void download()}>
               Download CSV
             </Button>

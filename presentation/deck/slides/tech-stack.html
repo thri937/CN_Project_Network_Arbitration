@@ -1,0 +1,53 @@
+<section id="tech-stack" data-transition="fade" style="background:#FAF7F1;color:#4A5563;font-family:'Nunito Sans', Verdana, sans-serif;padding:128px;display:flex;flex-direction:column;justify-content:space-between;gap:48px">
+<div style="display:flex;flex-direction:column;gap:16px">
+<p style="font-size:24px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:#2F62A8">Tech stack</p>
+<h2 style="font-family:Rubik, Arial, sans-serif;font-size:72px;font-weight:600;line-height:1.1;color:#17212F">TypeScript, end to end</h2>
+</div>
+<div style="display:flex;gap:24px">
+<div style="flex:1;background:#FFFDF9;border:1px solid #E4DED3;border-top:6px solid #2F62A8;border-radius:16px;padding:28px 32px;display:flex;flex-direction:column;gap:14px">
+<h3 style="font-family:Rubik, Arial, sans-serif;font-size:32px;font-weight:600;color:#17212F">Web pages</h3>
+<ul style="font-size:24px;line-height:1.45;color:#17212F">
+<li>React 18 + Vite</li>
+<li>Tailwind CSS</li>
+<li>TanStack Query</li>
+<li>Recharts (live charts)</li>
+<li>qrcode (join QR)</li>
+<li>WebSocket + fetch streams</li>
+</ul>
+</div>
+<div style="flex:1;background:#FFFDF9;border:1px solid #E4DED3;border-top:6px solid #D9622B;border-radius:16px;padding:28px 32px;display:flex;flex-direction:column;gap:14px">
+<h3 style="font-family:Rubik, Arial, sans-serif;font-size:32px;font-weight:600;color:#17212F">Slice gateway</h3>
+<ul style="font-size:24px;line-height:1.45;color:#17212F">
+<li>Node.js http + net</li>
+<li>ws (WebSocket)</li>
+<li>Token buckets, queues</li>
+<li>20 ms scheduler</li>
+<li>Probe meter</li>
+<li>Zod validation</li>
+</ul>
+</div>
+<div style="flex:1;background:#FFFDF9;border:1px solid #E4DED3;border-top:6px solid #5B8BD0;border-radius:16px;padding:28px 32px;display:flex;flex-direction:column;gap:14px">
+<h3 style="font-family:Rubik, Arial, sans-serif;font-size:32px;font-weight:600;color:#17212F">Controller</h3>
+<ul style="font-size:24px;line-height:1.45;color:#17212F">
+<li>Express REST API</li>
+<li>Zod validation</li>
+<li>Socket.IO realtime</li>
+<li>JWT sessions</li>
+<li>Pino logs</li>
+<li>File-backed data store</li>
+</ul>
+</div>
+<div style="flex:1;background:#FFFDF9;border:1px solid #E4DED3;border-top:6px solid #8A3510;border-radius:16px;padding:28px 32px;display:flex;flex-direction:column;gap:14px">
+<h3 style="font-family:Rubik, Arial, sans-serif;font-size:32px;font-weight:600;color:#17212F">Test &amp; network</h3>
+<ul style="font-size:24px;line-height:1.45;color:#17212F">
+<li>Vitest + Supertest</li>
+<li>demo:local test driver</li>
+<li>Agent (software phone)</li>
+<li>Windows Mobile Hotspot</li>
+<li>PowerShell firewall script</li>
+</ul>
+</div>
+</div>
+<p style="font-size:32px;line-height:1.4;color:#17212F">One language across phone page, gateway, controller and tests: <b>npm workspaces</b> hold all six packages.</p>
+<aside>Everything is TypeScript. The two web pages, the operator dashboard and the department page on the phones, are React 18 built with Vite, styled with Tailwind, with TanStack Query for server data, Recharts for live charts and the qrcode library for join codes; the phone page talks to the gateway with a WebSocket and a streaming download. The slice gateway is plain Node.js, using its built-in HTTP and network modules and the ws WebSocket library; it contains our token buckets, queues, a 20 millisecond scheduler and the probe meter. The controller is Express with Zod validation, Socket.IO, JWT sessions, Pino logging and a data store saved to a file. Tests use Vitest and Supertest; a test driver runs six test cases end to end, and a small agent program acts as a phone when we do not have seven real ones. On the network side we use Windows Mobile Hotspot and a PowerShell script that opens the firewall for the local network only.</aside>
+</section>

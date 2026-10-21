@@ -101,7 +101,8 @@ export function createTestbedController(deps: TestbedControllerDeps) {
     fs.mkdirSync(EXPERIMENTS_DIR, { recursive: true });
     const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
     const file = `${stamp}-session.csv`;
-    const stream = fs.createWriteStream(path.join(EXPERIMENTS_DIR, file), { flags: 'a' });
+    // Opened on the first line, so starting the controller without traffic leaves no empty file.
+    let stream: fs.WriteStream | null = null;
     recording = { file, startedAtMs: Date.now(), rowCount: 0, label };
     recorder = new ExperimentRecorder(
       () => gateway.readStats(),
@@ -114,7 +115,10 @@ export function createTestbedController(deps: TestbedControllerDeps) {
           decisionId: open?.decisionIds[open.decisionIds.length - 1] ?? '',
         };
       },
-      (line) => stream.write(line),
+      (line) => {
+        stream ??= fs.createWriteStream(path.join(EXPERIMENTS_DIR, file), { flags: 'a' });
+        stream.write(line);
+      },
     );
     // Poll faster than the gateway's 2 s window; each window is written exactly once.
     setInterval(() => {

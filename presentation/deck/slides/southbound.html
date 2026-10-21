@@ -1,0 +1,28 @@
+<section id="southbound" data-transition="fade" style="background:#FAF7F1;color:#4A5563;font-family:'Nunito Sans', Verdana, sans-serif;padding:128px;display:flex;flex-direction:column;justify-content:space-between;gap:48px">
+<div style="display:flex;flex-direction:column;gap:16px">
+<p style="font-size:24px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:#2F62A8">Networking · Controller ↔ gateway</p>
+<h2 style="font-family:Rubik, Arial, sans-serif;font-size:72px;font-weight:600;line-height:1.1;color:#17212F">One small API between brain and network</h2>
+</div>
+<div style="display:flex;align-items:center;gap:28px">
+<div style="flex:none;width:380px;display:flex;flex-direction:column;gap:12px">
+<p style="font-size:24px;font-weight:700;letter-spacing:2px;color:#4A5563">CONTROLLER</p>
+<p style="background:#E9EEF5;color:#17212F;font-size:24px;padding:12px 20px;border-radius:10px">Contention detector</p>
+<p style="background:#E9EEF5;color:#17212F;font-size:24px;padding:12px 20px;border-radius:10px">Arbitration engine</p>
+<p style="background:#E9EEF5;color:#17212F;font-size:24px;padding:12px 20px;border-radius:10px">Recovery job</p>
+<p style="background:#E9EEF5;color:#17212F;font-size:24px;padding:12px 20px;border-radius:10px">Dashboard and recorder</p>
+</div>
+<x-shape kind="arrow-right" style="flex:none;width:56px;height:28px;background:#C9D3DF"></x-shape>
+<div style="flex:1;background:#17212F;border-radius:20px;padding:32px 36px;display:flex;flex-direction:column;gap:12px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;font-weight:600;color:#F4A259">Southbound API · 127.0.0.1:9090</p>
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;color:#FAF7F1">GET&#160;&#160;&#160;&#160;/v1/stats <span style="color:#9FB0C3">← last 2 s window, read-only</span></p>
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;color:#FAF7F1">PUT&#160;&#160;&#160;&#160;/v1/slices/:code/limit <span style="color:#9FB0C3">← next tick</span></p>
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;color:#FAF7F1">PUT&#160;&#160;&#160;&#160;/v1/slices <span style="color:#9FB0C3">← catalogue, join codes</span></p>
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;color:#FAF7F1">GET&#160;&#160;&#160;&#160;/v1/devices · DELETE /v1/devices/:id</p>
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;color:#FAF7F1">POST&#160;&#160;&#160;/v1/slices/:code/demand <span style="color:#9FB0C3">← scenarios</span></p>
+</div>
+<x-shape kind="arrow-right" style="flex:none;width:56px;height:28px;background:#C9D3DF"></x-shape>
+<div style="flex:none;width:300px;background:#2F62A8;border-radius:20px;padding:32px;display:flex;flex-direction:column;gap:10px"><h3 style="font-family:Rubik, Arial, sans-serif;font-size:32px;font-weight:600;color:#FAF7F1">Gateway</h3><p style="font-size:24px;line-height:1.4;color:#FAF7F1">enforces and measures</p></div>
+</div>
+<div style="background:#17212F;border-radius:16px;padding:20px 32px"><p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:32px;color:#FAF7F1">Authorization: Bearer $GATEWAY_TOKEN <span style="color:#9FB0C3">← loopback only; phones can’t reach it</span></p></div>
+<aside>The controller and the gateway talk through one small API, the southbound API. The controller reads the last completed two-second window with GET stats; it is read-only, so the controller, the dashboard and the recorder all see exactly the same numbers. It sets a new limit with one PUT per slice, which the gateway applies on its next 20 millisecond tick. It sends the slice catalogue with the join codes, lists and removes devices, and the dashboard’s scenario buttons set every device’s demand through it. The API listens only on the laptop’s loopback address and needs a secret token, so a phone on the hotspot cannot change any limit. If the gateway restarts, the controller notices within three seconds and sends the catalogue again with the current limits.</aside>
+</section>

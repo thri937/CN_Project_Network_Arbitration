@@ -1,0 +1,180 @@
+1
+00:00:01,000 --> 00:00:03,610
+One link. A whole company shares it.
+
+2
+00:00:03,650 --> 00:00:06,390
+Lunch hour. Everyone wants it at once.
+
+3
+00:00:06,430 --> 00:00:08,180
+Something has to slow down.
+
+4
+00:00:08,220 --> 00:00:10,300
+So… who would YOU slow down?
+
+5
+00:00:13,820 --> 00:00:18,050
+Network slicing splits one network into
+reserved virtual lanes, called slices.
+
+6
+00:00:18,090 --> 00:00:23,460
+We built a real testbed: 7 departments, 7 slices, one 1-megabit link.
+
+7
+00:00:23,500 --> 00:00:28,000
+950 kilobits are usable, but 1,480 were promised.
+
+8
+00:00:28,040 --> 00:00:31,490
+That's normal, like a gym selling more memberships than machines.
+
+9
+00:00:31,560 --> 00:00:35,190
+Normal networks decide with technical labels, set at install time.
+
+10
+00:00:35,230 --> 00:00:42,030
+The canteen screens are tagged URLLC, premium.
+The regulated quality lab, eMBB, standard.
+
+11
+00:00:42,070 --> 00:00:45,380
+So the network slows the lab… and protects the lunch menu.
+
+12
+00:00:45,800 --> 00:00:48,700
+Our software ignores labels and asks business questions.
+
+13
+00:00:48,740 --> 00:00:51,870
+How critical is it? What does a minute of outage cost?
+
+14
+00:00:51,910 --> 00:00:57,150
+Factory line: £8,400. Canteen screens: £15.
+
+15
+00:00:57,190 --> 00:01:03,380
+Safety rules? Customer impact?
+How long can it cope? Was it slowed recently?
+
+16
+00:01:03,800 --> 00:01:06,370
+Then a 7-step loop runs every 2 seconds.
+
+17
+00:01:06,410 --> 00:01:10,510
+1. Measure real traffic, delay and lost data at the gateway.
+
+18
+00:01:10,550 --> 00:01:15,430
+2. Detect: demand over 102% of the link, twice in a row.
+
+19
+00:01:15,470 --> 00:01:17,010
+One spike can't fool it.
+
+20
+00:01:17,050 --> 00:01:21,630
+3. Score: each slice gets a business score, 0 to 100.
+
+21
+00:01:21,670 --> 00:01:27,570
+4. Decide. Many small cuts beat one big cut.
+Harm grows faster than the cut.
+
+22
+00:01:27,610 --> 00:01:35,440
+One slice cut 60%: harm 0.36. Six slices cut 10%: just 0.06.
+
+23
+00:01:35,480 --> 00:01:39,800
+Life-safety slices are never touched.
+No slice drops below its minimum.
+
+24
+00:01:39,840 --> 00:01:43,000
+5. Apply the new speed limits on the gateway.
+
+25
+00:01:43,040 --> 00:01:46,560
+6. Restore bandwidth after each recovery window.
+
+26
+00:01:46,600 --> 00:01:52,650
+7. Record a permanent explanation.
+Nobody can edit or delete it, not even an admin.
+
+27
+00:01:53,070 --> 00:01:58,910
+In the lunch-hour rush, demand hit 1,316 kilobits, with 950 usable.
+
+28
+00:01:58,950 --> 00:02:03,310
+With a safety margin, it had to free 251.5 kilobits.
+
+29
+00:02:03,350 --> 00:02:07,270
+Remember our question? The canteen screens took an 80% cut.
+
+30
+00:02:07,310 --> 00:02:14,350
+Office Wi-Fi lost 32%, the warehouse 24%, CCTV 12%.
+Patient monitoring: never cut.
+
+31
+00:02:14,390 --> 00:02:20,250
+Factory and lab: untouched.
+The gateway enforced it 4 seconds later, with no button pressed.
+
+32
+00:02:20,670 --> 00:02:25,280
+What's new?
+Not slicing, not the sharing maths, but the combination.
+
+33
+00:02:25,320 --> 00:02:29,770
+Business value, not labels. Small cuts, not one deep cut.
+
+34
+00:02:29,810 --> 00:02:32,120
+Safety as a hard rule, not a weight.
+
+35
+00:02:32,160 --> 00:02:35,370
+And it is proved on real traffic, every 2 seconds recorded.
+
+36
+00:02:35,410 --> 00:02:41,790
+With arbitration off, the clinic waited half a second.
+On: 23 milliseconds, no loss.
+
+37
+00:02:42,210 --> 00:02:46,300
+Today the link is real but small:
+1 megabit, shaped in our own software.
+
+38
+00:02:46,340 --> 00:02:53,100
+Real traffic, measured delay, phones on a
+hotspot, and the full engine. 460 tests pass.
+
+39
+00:02:53,140 --> 00:02:56,085
+Next: seven phones measured, kernel shaping,
+
+40
+00:02:56,125 --> 00:02:58,930
+a real 5G core, and radio slicing.
+
+41
+00:02:59,250 --> 00:03:02,560
+When the link is full, it slows down
+what matters least to the business,
+
+42
+00:03:02,600 --> 00:03:07,220
+in small, fair, safe steps. And it explains every decision.

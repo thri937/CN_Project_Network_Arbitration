@@ -1,0 +1,18 @@
+<section id="demo-run" data-transition="fade" style="background:#FAF7F1;color:#4A5563;font-family:'Nunito Sans', Verdana, sans-serif;padding:128px;display:flex;flex-direction:column;justify-content:space-between;gap:40px">
+<div style="display:flex;flex-direction:column;gap:16px">
+<p style="font-size:24px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:#D9622B">Live demo · Run it</p>
+<h2 style="font-family:Rubik, Arial, sans-serif;font-size:72px;font-weight:600;line-height:1.1;color:#17212F">Up and running</h2>
+</div>
+<div style="background:#17212F;border-radius:24px;padding:40px 56px;display:flex;flex-direction:column;gap:20px">
+<div style="display:flex;align-items:center;gap:32px"><p style="width:900px;font-family:'JetBrains Mono', 'Courier New', monospace;font-size:32px;color:#FAF7F1"><span style="color:#F4A259">&gt; </span>npm install</p><p style="font-size:24px;color:#9FB0C3">once · downloads the parts</p></div>
+<div style="display:flex;align-items:center;gap:32px"><p style="width:900px;font-family:'JetBrains Mono', 'Courier New', monospace;font-size:32px;color:#FAF7F1"><span style="color:#F4A259">&gt; </span>npm run setup</p><p style="font-size:24px;color:#9FB0C3">once · writes .env and the token</p></div>
+<div style="display:flex;align-items:center;gap:32px"><p style="width:900px;font-family:'JetBrains Mono', 'Courier New', monospace;font-size:32px;color:#FAF7F1"><span style="color:#F4A259">&gt; </span>npm run build &amp;&amp; npm run seed</p><p style="font-size:24px;color:#9FB0C3">phone page + the 7 departments</p></div>
+<div style="display:flex;align-items:center;gap:32px"><p style="width:900px;font-family:'JetBrains Mono', 'Courier New', monospace;font-size:32px;color:#FAF7F1"><span style="color:#F4A259">&gt; </span>scripts\windows\open-firewall.ps1</p><p style="font-size:24px;color:#9FB0C3">as administrator · port 8080</p></div>
+<div style="display:flex;align-items:center;gap:32px"><p style="width:900px;font-family:'JetBrains Mono', 'Courier New', monospace;font-size:32px;color:#FAF7F1"><span style="color:#F4A259">&gt; </span>npm run dev</p><p style="font-size:24px;color:#9FB0C3">all four programs</p></div>
+</div>
+<div style="display:flex;flex-direction:column;gap:12px">
+<p style="font-family:Rubik, Arial, sans-serif;font-size:40px;font-weight:600;color:#17212F">Turn on <span style="color:#2F62A8">Mobile hotspot</span>, open <span style="color:#2F62A8">localhost:5173</span>, sign in as Admin.</p>
+<p style="font-size:24px;line-height:1.4">Phones join at <b style="color:#17212F">192.168.137.1:8080/join</b>. Fewer than 7 phones? Use browser tabs or the agent for the rest.</p>
+</div>
+<aside>Running it needs only Node.js and a Windows laptop. Once: npm install, then npm run setup, which writes the settings file and a secret token, then npm run build so the gateway can serve the phone page, and npm run seed to create the seven departments. Open PowerShell as administrator and run the firewall script, which opens port 8080 for the local network only. Then npm run dev starts all four programs. Turn on the Windows Mobile Hotspot, open localhost 5173 on the laptop and sign in as Admin. Phones connect to the hotspot and open 192.168.137.1 port 8080 slash join, or scan the QR code. If we have fewer than seven phones, browser tabs on the laptop or the agent program fill in the other departments.</aside>
+</section>

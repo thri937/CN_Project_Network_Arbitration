@@ -188,6 +188,12 @@ With arbitration off, all slices share one overflowing queue. With it on, the en
 four cheapest slices, carried traffic fits the link again, and the Clinic, Factory and Lab get
 their latency and loss back. The cut slices take the loss instead.
 
+**Fair queueing alone?** The gateway can also share the link by weighted deficit round robin
+(`GATEWAY_ROOT_DISCIPLINE=drr`). With no controller it keeps Clinic, Factory and Lab fast in the
+lunch rush (they stay inside their share), but at full peak it gives the Clinic 37.5 kbps, below
+its 40 kbps floor. Fair sharing isolates slices; the engine decides what the shares should be.
+Details: [`paper/README.md`](paper/README.md).
+
 ---
 
 ## Project map
@@ -211,7 +217,7 @@ their latency and loss back. The cut slices take the loss instead.
 | Command | What it does |
 |---|---|
 | `npm run dev` | Start controller, gateway, dashboard and department page together |
-| `npm run build` / `npm start` | Production build / run |
+| `npm run build` / `npm start` | Production build / run of the controller and gateway (phones use the built department page on :8080). For the dashboard, also run `npm run preview -w @cn/dashboard`, or use `npm run dev` |
 | `npm test` | All tests (controller and gateway) |
 | `npm run demo:local` | TC1–TC6 automatically on one laptop (`-- --quick` for a shorter run) |
 | `npm run lan:info` | Show the laptop's addresses and a QR code for phones |

@@ -63,14 +63,14 @@ export function experimentRows(
 export class ExperimentRecorder {
   private lastWindowAtMs = 0;
   private readonly startedAtMs = Date.now();
+  private headerWritten = false;
 
+  /** Nothing is written until the first window arrives, so a run with no gateway leaves no file. */
   constructor(
     private readonly readStats: () => Promise<GatewaySliceStats[]>,
     private readonly context: () => Omit<ExperimentRowContext, 'tMs'>,
     private readonly write: (line: string) => void,
-  ) {
-    this.write(`${EXPERIMENT_CSV_HEADER}\n`);
-  }
+  ) {}
 
   async poll(): Promise<number> {
     const stats = await this.readStats();
@@ -78,6 +78,10 @@ export class ExperimentRecorder {
     if (stats.length === 0 || windowAt <= this.lastWindowAtMs) return 0;
     this.lastWindowAtMs = windowAt;
 
+    if (!this.headerWritten) {
+      this.write(`${EXPERIMENT_CSV_HEADER}\n`);
+      this.headerWritten = true;
+    }
     const rows = experimentRows(stats, { ...this.context(), tMs: windowAt - this.startedAtMs });
     for (const row of rows) this.write(`${row}\n`);
     return rows.length;

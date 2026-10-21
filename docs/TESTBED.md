@@ -126,7 +126,22 @@ windows), arbitration off then on. The table gives means over the measured windo
   its traffic is dropped.
 - **Scope.** This is loopback, so it measures the gateway and the control loop, not Wi-Fi.
 
-### 6.2 Hotspot run (to do with real phones)
+A repeat run on the final code (`paper/results/fifo-demo-local-repeat-*`) passed every check
+with the same decisions; its unloaded latency floor was 31–32 ms instead of 22–23 ms. The floor
+comes from the 20 ms scheduler tick and how busy the laptop is.
+
+### 6.2 The same run with fair queueing on the link (DRR)
+
+`GATEWAY_ROOT_DISCIPLINE=drr npm run demo:local` (`paper/results/drr-demo-local-*`): TC1–TC5
+pass. TC6's "lower latency with arbitration on" check fails by design: with DRR, Clinic,
+Factory and Lab already sit at 32–40 ms with arbitration off, because each stays inside its
+weighted share. Arbitration still decides who pays: the Canteen drops from 99 kbps to its
+28 kbps floor, and Warehouse and CCTV loss falls (13.0 → 5.3 %, 30.0 → 16.5 %).
+
+Without any controller, DRR at full peak (TC4 load) gives each slice 950 × baseline ÷ 1,480:
+the Clinic gets 37.5 kbps, below its 40 kbps floor (`paper/results/no-arbitration.csv`).
+
+### 6.3 Hotspot run (to do with real phones)
 
 Join the seven departments from phones, then run TC3 with automatic arbitration off for a minute
 and on for a minute (see RUNBOOK Act 5). Download the CSV from the dashboard's **Recording** box

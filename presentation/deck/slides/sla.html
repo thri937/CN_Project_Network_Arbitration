@@ -1,0 +1,20 @@
+<section id="sla" data-transition="fade" style="background:#FAF7F1;color:#4A5563;font-family:'Nunito Sans', Verdana, sans-serif;padding:128px;display:flex;flex-direction:column;justify-content:space-between;gap:40px">
+<div style="display:flex;flex-direction:column;gap:16px">
+<p style="font-size:24px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:#2F62A8">Background · Service-level agreements</p>
+<h2 style="font-family:Rubik, Arial, sans-serif;font-size:72px;font-weight:600;line-height:1.1;color:#17212F">Every slice has a contract (SLA)</h2>
+</div>
+<div style="display:flex;flex-direction:column;gap:16px">
+<p style="font-family:Rubik, Arial, sans-serif;font-size:32px;font-weight:600;color:#17212F">Example: Patient Telemetry · SST 2 · SD 000101 · URLLC</p>
+<div style="display:flex"><div style="flex:none;width:592px;height:60px;background:#1F4E8C;border-radius:12px 0px 0px 12px"></div><div style="flex:none;width:296px;height:60px;background:#5B8BD0"></div><div style="flex:none;width:444px;height:60px;background:#DCE6F4;border-radius:0px 12px 12px 0px"></div></div>
+<div style="display:flex"><p style="flex:none;width:592px;font-size:24px;color:#17212F"><b>Guaranteed floor · 40 kbps</b><br>never cut below this</p><p style="flex:none;width:296px;font-size:24px;color:#17212F"><b>Normal share · 60</b><br>restored after a cut</p><p style="flex:none;width:444px;font-size:24px;color:#17212F"><b>Burst up to 90</b><br>when spare capacity exists</p></div>
+</div>
+<div style="display:flex;gap:20px">
+<div style="flex:1;background:#FFFDF9;border:1px solid #E4DED3;border-radius:16px;padding:20px 24px"><p style="font-size:24px">Latency (p95)</p><p style="font-family:Rubik, Arial, sans-serif;font-size:44px;font-weight:600;color:#2F62A8">≤ 150 ms</p></div>
+<div style="flex:1;background:#FFFDF9;border:1px solid #E4DED3;border-radius:16px;padding:20px 24px"><p style="font-size:24px">Jitter</p><p style="font-family:Rubik, Arial, sans-serif;font-size:44px;font-weight:600;color:#2F62A8">≤ 25 ms</p></div>
+<div style="flex:1;background:#FFFDF9;border:1px solid #E4DED3;border-radius:16px;padding:20px 24px"><p style="font-size:24px">Packet loss</p><p style="font-family:Rubik, Arial, sans-serif;font-size:44px;font-weight:600;color:#2F62A8">≤ 0.1%</p></div>
+<div style="flex:1;background:#FFFDF9;border:1px solid #E4DED3;border-radius:16px;padding:20px 24px"><p style="font-size:24px">Throughput</p><p style="font-family:Rubik, Arial, sans-serif;font-size:44px;font-weight:600;color:#2F62A8">≥ 40 kbps</p></div>
+<div style="flex:1;background:#FFFDF9;border:1px solid #E4DED3;border-radius:16px;padding:20px 24px"><p style="font-size:24px">Availability</p><p style="font-family:Rubik, Arial, sans-serif;font-size:44px;font-weight:600;color:#2F62A8">99.999%</p></div>
+</div>
+<p style="font-size:32px;line-height:1.4;color:#17212F">The gateway <b>measures</b> every one of these, every 2 seconds, on the slice’s real traffic.</p>
+<aside>Each slice comes with a contract. Bandwidth has three levels: a guaranteed floor the system may never cut below, a normal share it is restored to after any cut, and a burst ceiling. For the clinic: a 40 kbps floor, 60 normal, 90 burst. Then there are quality targets: latency at most 150 milliseconds at the 95th percentile, jitter at most 25, packet loss at most 0.1 percent, at least 40 kbps, and five-nines availability. In this project these are not modelled numbers: the gateway measures each of them every two seconds from the slice’s own traffic and probes, and the dashboard compares them with the targets.</aside>
+</section>

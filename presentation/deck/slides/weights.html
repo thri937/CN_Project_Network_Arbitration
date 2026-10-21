@@ -1,0 +1,23 @@
+<section id="weights" data-transition="fade" style="background:#FAF7F1;color:#4A5563;font-family:'Nunito Sans', Verdana, sans-serif;padding:128px;display:flex;flex-direction:column;justify-content:space-between;gap:40px">
+<div style="display:flex;flex-direction:column;gap:16px">
+<p style="font-size:24px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:#2F62A8">Step 3 · Score</p>
+<h2 style="font-family:Rubik, Arial, sans-serif;font-size:72px;font-weight:600;line-height:1.1;color:#17212F">How the business score is made</h2>
+</div>
+<div style="display:flex;gap:64px;align-items:center">
+<div style="flex:1;display:flex;flex-direction:column;gap:14px">
+<div style="display:flex;align-items:center;gap:20px"><p style="width:340px;font-size:24px;font-weight:700;color:#17212F">Department criticality</p><div style="flex:none;width:416px;height:32px;background:#2F62A8;border-radius:6px"></div><p style="font-size:24px;font-weight:700;color:#17212F">26%</p></div>
+<div style="display:flex;align-items:center;gap:20px"><p style="width:340px;font-size:24px;font-weight:700;color:#17212F">Downtime cost</p><div style="flex:none;width:320px;height:32px;background:#2F62A8;border-radius:6px"></div><p style="font-size:24px;font-weight:700;color:#17212F">20%</p></div>
+<div style="display:flex;align-items:center;gap:20px"><p style="width:340px;font-size:24px;font-weight:700;color:#17212F">Business importance</p><div style="flex:none;width:256px;height:32px;background:#2F62A8;border-radius:6px"></div><p style="font-size:24px;font-weight:700;color:#17212F">16%</p></div>
+<div style="display:flex;align-items:center;gap:20px"><p style="width:340px;font-size:24px;font-weight:700;color:#17212F">Compliance</p><div style="flex:none;width:224px;height:32px;background:#2F62A8;border-radius:6px"></div><p style="font-size:24px;font-weight:700;color:#17212F">14%</p></div>
+<div style="display:flex;align-items:center;gap:20px"><p style="width:340px;font-size:24px;font-weight:700;color:#17212F">Customer impact</p><div style="flex:none;width:192px;height:32px;background:#2F62A8;border-radius:6px"></div><p style="font-size:24px;font-weight:700;color:#17212F">12%</p></div>
+<div style="display:flex;align-items:center;gap:20px"><p style="width:340px;font-size:24px;font-weight:700;color:#17212F">Operational importance</p><div style="flex:none;width:112px;height:32px;background:#2F62A8;border-radius:6px"></div><p style="font-size:24px;font-weight:700;color:#17212F">7%</p></div>
+<div style="display:flex;align-items:center;gap:20px"><p style="width:340px;font-size:24px;font-weight:700;color:#17212F">Recovery intolerance</p><div style="flex:none;width:80px;height:32px;background:#2F62A8;border-radius:6px"></div><p style="font-size:24px;font-weight:700;color:#17212F">5%</p></div>
+</div>
+<div style="flex:none;width:560px;display:flex;flex-direction:column;gap:20px">
+<div style="background:#FFFDF9;border:1px solid #E4DED3;border-radius:16px;padding:24px 28px"><h3 style="font-family:Rubik, Arial, sans-serif;font-size:32px;font-weight:600;color:#17212F">Weights total 100%</h3><p style="font-size:24px;line-height:1.4">Each factor is turned into 0–100, then weighted.</p></div>
+<div style="background:#FFFDF9;border:1px solid #E4DED3;border-radius:16px;padding:24px 28px"><h3 style="font-family:Rubik, Arial, sans-serif;font-size:32px;font-weight:600;color:#17212F">Cost on a log scale</h3><p style="font-size:24px;line-height:1.4">Declaring a huge £/min can’t win by itself.</p></div>
+<div style="background:#FFFDF9;border:1px solid #E4DED3;border-radius:16px;padding:24px 28px"><h3 style="font-family:Rubik, Arial, sans-serif;font-size:32px;font-weight:600;color:#17212F">Versioned policy</h3><p style="font-size:24px;line-height:1.4">Admins change weights; old decisions keep theirs.</p></div>
+</div>
+</div>
+<aside>The business score is a weighted sum of seven factors, each first normalised to a 0 to 100 scale. In the default policy, department criticality counts 26 percent, downtime cost 20, business importance 16, compliance 14, customer impact 12, operational importance 7 and recovery intolerance 5; the weights must total exactly 100 percent. Downtime cost is log-normalised: the reference cost maps to 50 and each tenfold increase adds only about 25 points, so a department cannot win simply by declaring an enormous number. The policy is versioned and immutable once active — editing creates a new draft — and every decision stores a snapshot of the policy it used, so it stays explainable after the rules change.</aside>
+</section>

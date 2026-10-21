@@ -1,0 +1,20 @@
+<section id="test-auto" data-transition="fade" style="background:#FAF7F1;color:#4A5563;font-family:'Nunito Sans', Verdana, sans-serif;padding:128px;display:flex;flex-direction:column;justify-content:space-between;gap:56px">
+<div style="display:flex;flex-direction:column;gap:16px">
+<p style="font-size:24px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:#2F62A8">Live demo · Proof</p>
+<h2 style="font-family:Rubik, Arial, sans-serif;font-size:72px;font-weight:600;line-height:1.1;color:#17212F">Checked by automated tests</h2>
+</div>
+<div style="display:flex;gap:80px;align-items:center">
+<div style="flex:none;width:640px;display:flex;flex-direction:column;gap:16px">
+<p style="font-family:Rubik, Arial, sans-serif;font-size:200px;font-weight:600;line-height:1;color:#2F62A8">460</p>
+<p style="font-family:Rubik, Arial, sans-serif;font-size:40px;font-weight:600;color:#17212F">tests pass · plus 6 live test cases</p>
+<div style="background:#17212F;border-radius:16px;padding:20px 32px;display:flex;flex-direction:column;gap:8px"><p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:32px;color:#FAF7F1"><span style="color:#F4A259">&gt; </span>npm test</p><p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:32px;color:#FAF7F1"><span style="color:#F4A259">&gt; </span>npm run demo:local</p></div>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:28px">
+<div style="display:flex;gap:20px;align-items:center"><x-icon name="CheckCircle" style="flex:none;color:#2F62A8;width:56px;height:56px"></x-icon><p style="font-family:Rubik, Arial, sans-serif;font-size:40px;font-weight:500;color:#17212F">Shaper within 0.25% of limit</p></div>
+<div style="display:flex;gap:20px;align-items:center"><x-icon name="CheckCircle" style="flex:none;color:#2F62A8;width:56px;height:56px"></x-icon><p style="font-family:Rubik, Arial, sans-serif;font-size:40px;font-weight:500;color:#17212F">The clinic can never be cut</p></div>
+<div style="display:flex;gap:20px;align-items:center"><x-icon name="CheckCircle" style="flex:none;color:#2F62A8;width:56px;height:56px"></x-icon><p style="font-family:Rubik, Arial, sans-serif;font-size:40px;font-weight:500;color:#17212F">Real traffic → decision → recovery</p></div>
+<div style="display:flex;gap:20px;align-items:center"><x-icon name="CheckCircle" style="flex:none;color:#2F62A8;width:56px;height:56px"></x-icon><p style="font-family:Rubik, Arial, sans-serif;font-size:40px;font-weight:500;color:#17212F">Off vs on: protected slices win</p></div>
+</div>
+</div>
+<aside>The strongest evidence is the tests. npm test runs 460 automated tests, 443 for the controller and 17 for the gateway, with 50 cloud-database tests skipped. The gateway tests check that the shaper holds its rate within three percent, that the shared link is never exceeded, that a full shared queue hurts every slice, that fair sharing isolates and weights slices correctly, and that the control API needs its token. Then npm run demo:local runs the six test cases end to end on real traffic: normal day, canteen flood, lunch rush, everyone at peak, recovery, and arbitration off versus on. All six pass with the default link. While building it we found and fixed real bugs, for example a fair-sharing mode that did not actually isolate slices, and added a test for each.</aside>
+</section>

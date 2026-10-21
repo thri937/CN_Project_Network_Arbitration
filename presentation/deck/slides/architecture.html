@@ -1,0 +1,17 @@
+<section id="architecture" data-transition="fade" style="background:#FAF7F1;color:#4A5563;font-family:'Nunito Sans', Verdana, sans-serif;padding:128px;display:flex;flex-direction:column;justify-content:space-between;gap:36px">
+<div style="display:flex;flex-direction:column;gap:16px">
+<p style="font-size:24px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:#2F62A8">Architecture</p>
+<h2 style="font-family:Rubik, Arial, sans-serif;font-size:72px;font-weight:600;line-height:1.1;color:#17212F">Four programs on one laptop</h2>
+</div>
+<div style="display:flex;flex-direction:column;gap:10px">
+<div style="display:flex;align-items:center;gap:24px;background:#DCE6F4;border-radius:12px;padding:14px 28px"><p style="flex:none;width:360px;font-family:Rubik, Arial, sans-serif;font-size:32px;font-weight:600;color:#17212F">Department page</p><p style="font-size:24px;color:#17212F">On each phone: join by code or QR, live limit, latency, and the explanation when cut</p></div>
+<p style="font-size:24px;font-weight:700;color:#2F62A8;padding:0px 28px">⇅ Wi-Fi hotspot · HTTP and WebSocket on port 8080</p>
+<div style="display:flex;align-items:center;gap:24px;background:#2F62A8;border-radius:12px;padding:14px 28px"><p style="flex:none;width:360px;font-family:Rubik, Arial, sans-serif;font-size:32px;font-weight:600;color:#FAF7F1">Slice gateway</p><p style="font-size:24px;color:#FAF7F1">The network: every byte passes through it. Enforces limits, measures every 2 s</p></div>
+<p style="font-size:24px;font-weight:700;color:#2F62A8;padding:0px 28px">⇅ Southbound API · 127.0.0.1:9090, secret token (phones can’t reach it)</p>
+<div style="display:flex;align-items:center;gap:24px;background:#E9EEF5;border-radius:12px;padding:14px 28px"><p style="flex:none;width:360px;font-family:Rubik, Arial, sans-serif;font-size:32px;font-weight:600;color:#17212F">Controller</p><p style="font-size:24px;color:#17212F">The brain: contention detection, CBHA decisions, recovery, audit log</p></div>
+<p style="font-size:24px;font-weight:700;color:#2F62A8;padding:0px 28px">⇅ REST API · Socket.IO live push</p>
+<div style="display:flex;align-items:center;gap:24px;background:#FBE3D3;border-radius:12px;padding:14px 28px"><p style="flex:none;width:360px;font-family:Rubik, Arial, sans-serif;font-size:32px;font-weight:600;color:#8A3510">Operator dashboard</p><p style="font-size:24px;color:#17212F">Slices and devices, QR codes, scenarios, arbitration on/off, decisions</p></div>
+</div>
+<p style="font-size:32px;line-height:1.4;color:#17212F">The controller <b>decides</b>; the gateway <b>enforces and measures</b>. Neither does the other’s job.</p>
+<aside>The testbed is four programs on one laptop. Each phone opens the department page, served by the gateway over the hotspot on port 8080; it joins a slice, starts a download at the rate it chooses, and sends small probes to measure latency. The slice gateway is the network: every byte the phones download passes through it, it enforces each slice’s limit and the shared 1 Mbps link, and it measures every two seconds. The controller is the brain: it reads those measurements over a private API on the laptop’s loopback address, protected by a secret token, so phones cannot reach it; it detects contention, runs the CBHA engine, pushes new limits back and records everything. The operator dashboard is where we watch it, show QR codes, run scenarios and read decisions.</aside>
+</section>

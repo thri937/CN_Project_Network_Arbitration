@@ -1,0 +1,27 @@
+<section id="gateway" data-transition="fade" style="background:#FAF7F1;color:#4A5563;font-family:'Nunito Sans', Verdana, sans-serif;padding:128px;display:flex;flex-direction:column;justify-content:space-between;gap:40px">
+<div style="display:flex;flex-direction:column;gap:16px">
+<p style="font-size:24px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:#2F62A8">Networking · The slice gateway</p>
+<h2 style="font-family:Rubik, Arial, sans-serif;font-size:72px;font-weight:600;line-height:1.1;color:#17212F">A real shaped link, not a model</h2>
+</div>
+<div style="display:flex;align-items:center;gap:16px">
+<div style="flex:none;width:250px;background:#E9EEF5;border-radius:16px;padding:24px;display:flex;flex-direction:column;gap:6px"><h3 style="font-family:Rubik, Arial, sans-serif;font-size:32px;font-weight:600;color:#17212F">Phone asks</h3><p style="font-size:24px;line-height:1.3">a download at X kbps = demand</p></div>
+<x-shape kind="arrow-right" style="flex:none;width:44px;height:22px;background:#C9D3DF"></x-shape>
+<div style="flex:none;width:290px;background:#FFFDF9;border:1px solid #E4DED3;border-radius:16px;padding:24px;display:flex;flex-direction:column;gap:6px"><h3 style="font-family:Rubik, Arial, sans-serif;font-size:32px;font-weight:600;color:#17212F">Slice queue</h3><p style="font-size:24px;line-height:1.3">0.5 s of traffic; full → dropped</p></div>
+<x-shape kind="arrow-right" style="flex:none;width:44px;height:22px;background:#C9D3DF"></x-shape>
+<div style="flex:none;width:290px;background:#FBE3D3;border:2px solid #D9622B;border-radius:16px;padding:24px;display:flex;flex-direction:column;gap:6px"><h3 style="font-family:Rubik, Arial, sans-serif;font-size:32px;font-weight:600;color:#8A3510">Token bucket</h3><p style="font-size:24px;line-height:1.3">no faster than the slice’s limit</p></div>
+<x-shape kind="arrow-right" style="flex:none;width:44px;height:22px;background:#C9D3DF"></x-shape>
+<div style="flex:1;background:#2F62A8;border-radius:16px;padding:24px;display:flex;flex-direction:column;gap:6px"><h3 style="font-family:Rubik, Arial, sans-serif;font-size:32px;font-weight:600;color:#FAF7F1">Shared link</h3><p style="font-size:24px;line-height:1.3;color:#FAF7F1">950 kbps for all slices; one queue (FIFO) or fair sharing (DRR)</p></div>
+</div>
+<div style="display:flex;gap:24px">
+<div style="flex:1;background:#17212F;border-radius:16px;padding:24px 32px;display:flex;flex-direction:column;gap:8px">
+<p style="font-size:24px;font-weight:700;letter-spacing:2px;color:#F4A259">MEASURED EVERY 2 SECONDS, PER SLICE</p>
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;line-height:1.5;color:#FAF7F1">demand · carried · dropped · queue delay<br>latency p50 / p95 · jitter · loss · availability</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:12px">
+<div style="display:flex;gap:14px;align-items:center"><x-icon name="Check" style="flex:none;color:#2F62A8;width:32px;height:32px"></x-icon><p style="font-size:24px;color:#17212F">Probes wait in the <b>same queues</b> as the data.</p></div>
+<div style="display:flex;gap:14px;align-items:center"><x-icon name="Check" style="flex:none;color:#2F62A8;width:32px;height:32px"></x-icon><p style="font-size:24px;color:#17212F">Shaper within <b>0.25%</b> of the limit, 20 to 950 kbps.</p></div>
+<div style="display:flex;gap:14px;align-items:center"><x-icon name="Check" style="flex:none;color:#2F62A8;width:32px;height:32px"></x-icon><p style="font-size:24px;color:#17212F">Unknown values stay unknown, never written as 0.</p></div>
+</div>
+</div>
+<aside>This is the heart of the testbed, and the big difference from a simulation. When a phone asks for a download at some rate, that rate is the slice’s demand, and the bytes really flow. Every 20 milliseconds the gateway runs three steps. The bytes go into the slice’s own queue, which holds half a second of traffic; if it is full, bytes are dropped. A token bucket lets them out no faster than the slice’s limit. Then all slices share one link of 950 kbps. With the default setting that is one shared queue, like a plain switch port; we also built fair sharing, deficit round robin, as an option. Every two seconds the gateway records each slice’s demand, carried rate, drops, queueing delay, latency, jitter, loss and availability. The latency comes from small probes that wait in the same queues as the data, so it is what the slice’s traffic really experiences. We measured the shaper: within a quarter of a percent of its limit at every speed we tested.</aside>
+</section>
