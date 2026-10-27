@@ -45,3 +45,6 @@ presentation/video/build/chunks/
 
 # Office lock files
 ~$*
+
+# Research Paper (Private)
+paper/
